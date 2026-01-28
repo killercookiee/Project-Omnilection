@@ -13,6 +13,6 @@
 # Output:
 # - offspring: New chromosome created by alternating segments from both parents
 
-class DisplacementMutation:
+class ShuffleMutation:
     def __init__(self, chromosome, N=None, N_distribution=None, shuffling_constant=1.0):
         pass

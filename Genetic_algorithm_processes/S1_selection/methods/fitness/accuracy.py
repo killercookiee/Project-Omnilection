@@ -11,7 +11,7 @@ class Accuracy:
         self.scaling_factor = scaling_factor
         self.testing_model = testing_model
 
-    def get_accuracy(self, prompt_output): # Place holder for actual accuracy computation
+    def get_accuracy(self, prompt_output, testing_model=None): # Place holder for actual accuracy computation
         """Receives prompt output and testing_model to compute accuracy score percentage between 0 and 100."""
         # Placeholder implementation - in practice, this would compare prompt_output to a reference answer
         # prompt_accuracy = self.testing_model.evaluate(prompt_output)

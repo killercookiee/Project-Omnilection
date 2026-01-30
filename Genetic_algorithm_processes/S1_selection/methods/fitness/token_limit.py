@@ -1,19 +1,19 @@
 # Input ratio of used tokens to total token limit (float between 0 and 1)
 # Output a normalized token limit score between 0 and 1
-# The function returns 0 if the ratio is close to 0, otherwise returns 1
+# The function returns 1 if the ratio is low, and 0 if the ratio is high (near limit)
 
 # Customizable parameters:
-# hard limit threshold: threshold below which the ratio is considered close to zero                 | default is 0.0
-# soft limit margin: margin above the hard limit threshold where the score transitions from 0 to 1  | default is 0.1
-# transition type: function defining how the score transitions from 0 to 1 within the soft margin   | default is smoothstep
+# soft_limit_threshold: threshold below which the score is 1 (plenty of tokens available)    | default is 0.9
+# hard_limit_threshold: threshold above which the score is 0 (at token limit)                | default is 1.0
+# transition type: function defining how the score transitions from 1 to 0 within the margin | default is smoothstep
 
 
 from LLM_models.model_registry import Model_Registry
 
 class Token_limit_ratio:
-    def __init__(self, hard_limit_threshold=0.0, soft_limit_margin=0.1):
+    def __init__(self, hard_limit_threshold=1.0, soft_limit_threshold=0.9):
+        self.soft_limit_threshold = soft_limit_threshold
         self.hard_limit_threshold = hard_limit_threshold
-        self.soft_limit_margin = soft_limit_margin
 
     def approximate_token_usage(self, text):
         """Approximate token usage based on text length / 4."""
@@ -31,24 +31,28 @@ class Token_limit_ratio:
         """
         Token limit function to normalize token usage ratio into a score between 0 and 1.
         
+        Returns 1 when token usage is low (below soft_limit_threshold)
+        Returns 0 when token usage is high (above hard_limit_threshold)
+        Smoothly transitions between them in the margin
+        
         Parameters:
-        - input_ratio: The ratio of used tokens to total token limit (float between 0 and 1)
-        - hard_limit_threshold: Threshold below which the ratio is considered close to zero (float)
-        - soft_limit_margin: Margin above the hard limit threshold for smooth transition (float)
+        - token_used: Number of tokens used
+        - token_limit: Maximum token limit
         
         Returns:
-        - limited_score: The normalized token limit score (float)
+        - limited_score: The normalized token limit score (float between 0 and 1)
         """
         token_ratio = token_used / token_limit if token_limit > 0 else 0.0
 
-        if token_ratio <= self.hard_limit_threshold:
-            return 0.0
-        elif token_ratio >= self.soft_limit_margin:
-            return 1.0
+        if token_ratio <= self.soft_limit_threshold:
+            return 1.0  # Plenty of tokens available
+        elif token_ratio >= self.hard_limit_threshold:
+            return 0.0  # At or over token limit
         else:
-            # Smoothstep transition
-            x = (token_ratio - self.hard_limit_threshold) / self.soft_limit_margin
-            return x * x * (3 - 2 * x)
+            # Smoothstep transition from 1 to 0
+            x = (token_ratio - self.soft_limit_threshold) / (self.hard_limit_threshold - self.soft_limit_threshold)
+            smoothstep = x * x * (3 - 2 * x)
+            return 1.0 - smoothstep  # Invert so it goes from 1 to 0
         
     def get_token_limit_score(self, prompt_input, model_name):
         """Calculate the token limit score based on prompt input and model name."""
@@ -58,7 +62,7 @@ class Token_limit_ratio:
     
         
 if __name__ == "__main__":
-    token_limit_instance = Token_limit_ratio(hard_limit_threshold=0.0, soft_limit_margin=0.1)
+    token_limit_instance = Token_limit_ratio(hard_limit_threshold=1.0, soft_limit_threshold=0.9)
 
     prompt_input = "This is a sample prompt input to test token limit ratio scoring."
     model_name = "gpt-3.5-turbo"

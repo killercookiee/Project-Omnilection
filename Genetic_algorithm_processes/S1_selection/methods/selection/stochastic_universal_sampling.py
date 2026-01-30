@@ -1,12 +1,11 @@
 # Input a dictionary of individuals with their fitness scores
 # Output a list of selected individuals based on stochastic universal sampling
 
-
 import random
 
 class StochasticUniversalSampling:
-    def __init__(self, selection_ratio=0.5):
-        self.selection_ratio = selection_ratio
+    def __init__(self, selection_ratio=None):
+        self.selection_ratio = selection_ratio if selection_ratio is not None else random.uniform(0.3, 0.7)
 
     def stochastic_universal_sampling(self, population):
         """
@@ -50,7 +49,6 @@ if __name__ == "__main__":
         'individual_3': 20,
         'individual_4': 40
     }
-    num_selections = 3
-
-    selected = sus_method.stochastic_universal_sampling(population, num_selections)
+    
+    selected = sus_method.stochastic_universal_sampling(population)
     print(f"Selected Individuals: {selected}")

@@ -7,64 +7,91 @@
 # hard_limit_threshold: threshold above which the score is 0 (at token limit)                | default is 1.0
 # transition type: function defining how the score transitions from 1 to 0 within the margin | default is smoothstep
 
+"""
+Genetic_algorithm_processes/S1_selection/methods/fitness/token_limit.py
+"""
 
-from LLM_models.model_registry import Model_Registry
+import json
+import os
+
 
 class Token_limit_ratio:
-    def __init__(self, hard_limit_threshold=1.0, soft_limit_threshold=0.9):
+    def __init__(self,
+        hard_limit_threshold: float = 1.0,
+        soft_limit_threshold: float = 0.85,
+        verbose: bool = False
+    ):
+        """
+        Parameters:
+        - hard_limit_threshold: ratio at which score becomes 0 (at or above this ratio means token limit reached)
+        - soft_limit_threshold: ratio below which score is 1 (below this ratio means plenty of tokens available)
+        - verbose: enable pretty printing of scores and thresholds
+        """
         self.soft_limit_threshold = soft_limit_threshold
         self.hard_limit_threshold = hard_limit_threshold
+        self.verbose = verbose
 
-    def approximate_token_usage(self, text):
-        """Approximate token usage based on text length / 4."""
-        input_length = len(text)
-        token_used = input_length // 4
-        return token_used
+        if self.verbose:
+            print(f"[Token_limit_ratio] Initialized — soft: {self.soft_limit_threshold} | hard: {self.hard_limit_threshold}")
 
-    def calculated_tokens(self, prompt_input, model_name):
+        file_path = 'LLM_models/model_registry.json'
+        if os.path.exists(file_path):
+            with open(file_path, 'r') as file:
+                self.model_registry = json.load(file)
+            if self.verbose:
+                print(f"[Token_limit_ratio] ✅ Registry loaded from {file_path}")
+        else:
+            print(f"[Token_limit_ratio] ❌ ERROR: Could not find registry at {file_path}")
+            self.model_registry = {}
+
+    def calculated_tokens(self, prompt_token_used: int, eval_token_used: int, model_name: str) -> tuple[int, int]:
         """Receives prompt history and model_name to compute token usage and limit."""
-        max_tokens = Model_Registry[model_name]["max_context_tokens"]
-        token_used = self.approximate_token_usage(prompt_input)
+        max_tokens = self.model_registry[model_name]["context_length"]
+        token_used = prompt_token_used + eval_token_used
+
+        if self.verbose:
+            print(f"[Token_limit_ratio] Model: {model_name} | Used: {token_used} tokens / {max_tokens} limit")
+
         return token_used, max_tokens
 
-    def token_limit_ratio_score(self, token_used, token_limit):
-        """
-        Token limit function to normalize token usage ratio into a score between 0 and 1.
-        
-        Returns 1 when token usage is low (below soft_limit_threshold)
-        Returns 0 when token usage is high (above hard_limit_threshold)
-        Smoothly transitions between them in the margin
-        
-        Parameters:
-        - token_used: Number of tokens used
-        - token_limit: Maximum token limit
-        
-        Returns:
-        - limited_score: The normalized token limit score (float between 0 and 1)
-        """
+    def token_limit_ratio_score(self, token_used: int, token_limit: int) -> float:
         token_ratio = token_used / token_limit if token_limit > 0 else 0.0
 
         if token_ratio <= self.soft_limit_threshold:
-            return 1.0  # Plenty of tokens available
+            score = 1.0
         elif token_ratio >= self.hard_limit_threshold:
-            return 0.0  # At or over token limit
+            score = 0.0
         else:
-            # Smoothstep transition from 1 to 0
             x = (token_ratio - self.soft_limit_threshold) / (self.hard_limit_threshold - self.soft_limit_threshold)
-            smoothstep = x * x * (3 - 2 * x)
-            return 1.0 - smoothstep  # Invert so it goes from 1 to 0
-        
-    def get_token_limit_score(self, prompt_input, model_name):
-        """Calculate the token limit score based on prompt input and model name."""
-        token_used, token_limit = self.calculated_tokens(prompt_input, model_name)
-        return self.token_limit_ratio_score(token_used, token_limit)
-        
-    
-        
-if __name__ == "__main__":
-    token_limit_instance = Token_limit_ratio(hard_limit_threshold=1.0, soft_limit_threshold=0.9)
+            score = 1.0 - (x * x * (3 - 2 * x))
 
-    prompt_input = "This is a sample prompt input to test token limit ratio scoring."
-    model_name = "gpt-3.5-turbo"
-    score = token_limit_instance.get_token_limit_score(prompt_input, model_name)
-    print(f"Token Limit Score: {score}")
+        if self.verbose:
+            status = "✅" if score >= 0.75 else "⚠️" if score > 0.0 else "❌"
+            bar = "█" * int(score * 20) + "░" * (20 - int(score * 20))
+            print(f"\n{'─'*40}")
+            print(f"  {status}  Token limit evaluation")
+            print(f"      Ratio  : {token_ratio:.1%}  (soft: {self.soft_limit_threshold:.0%} | hard: {self.hard_limit_threshold:.0%})")
+            print(f"      Score  : {score:.3f}  [{bar}]")
+            print(f"{'─'*40}\n")
+
+        return score
+
+    def get_token_limit_score(self, prompt_token_used: int, eval_token_used: int, model_name: str) -> float:
+        """Calculate the token limit score based on prompt input and model name."""
+        try:
+            token_used, token_limit = self.calculated_tokens(prompt_token_used, eval_token_used, model_name)
+            return self.token_limit_ratio_score(token_used, token_limit)
+        except Exception as e:
+            print(f"[Token_limit_ratio] ❌ ERROR for model {model_name}: {e} — returning 0.0")
+            return 0.0
+
+
+if __name__ == "__main__":
+    token_limit_instance = Token_limit_ratio(hard_limit_threshold=1.0, soft_limit_threshold=0.85, verbose=True)
+
+    score = token_limit_instance.get_token_limit_score(
+        prompt_token_used=1400,
+        eval_token_used=300,
+        model_name="smollm:135m"
+    )
+    print(f"Final — Token Limit Score: {score:.3f}")

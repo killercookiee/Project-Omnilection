@@ -1,0 +1,480 @@
+{
+    "gemma3:latest": {
+        "model_id": "a2af6cc3eb7f",
+        "size": "3.3",
+        "cost_per_1k_tokens": 0.0,
+        "architecture": "gemma3",
+        "parameters": "4.3B",
+        "parameters_count": 4300000000.0,
+        "context_length": 131072,
+        "embedding_length": "2560",
+        "quantization": "Q4_K_M",
+        "capabilities": [
+            "completion",
+            "vision"
+        ],
+        "stop_tokens": [
+            "<end_of_turn>"
+        ],
+        "system_prompt": null,
+        "model_parameters": {
+            "temperature": 1,
+            "top_k": 64,
+            "top_p": 0.95
+        },
+        "license": "Gemma Terms of Use Last modified: February 21, 2024",
+        "benchmark": {
+            "cold_load_duration": 5.078344708,
+            "warm_load_duration": 0.31050466699999996,
+            "total_duration": 1.343490417,
+            "load_duration": 0.31050466699999996,
+            "prompt_eval_count": 13,
+            "prompt_eval_duration": 0.049206584,
+            "prompt_eval_rate": 264.19,
+            "eval_count": 21,
+            "eval_duration": 0.9679758749999999,
+            "eval_rate": 21.69
+        }
+    },
+    "codellama:latest": {
+        "model_id": "8fdf8f752f6e",
+        "size": "3.8",
+        "cost_per_1k_tokens": 0.0,
+        "architecture": "llama",
+        "parameters": "7B",
+        "parameters_count": 7000000000.0,
+        "context_length": 16384,
+        "embedding_length": "4096",
+        "quantization": "Q4_0",
+        "capabilities": [
+            "completion"
+        ],
+        "stop_tokens": [
+            "[INST]",
+            "[/INST]",
+            "<<SYS>>",
+            "<</SYS>>"
+        ],
+        "system_prompt": null,
+        "model_parameters": {
+            "rope_frequency_base": "1e+06"
+        },
+        "license": "LLAMA 2 COMMUNITY LICENSE AGREEMENT Llama 2 Version Release Date: July 18, 2023",
+        "benchmark": {
+            "cold_load_duration": 0.0,
+            "warm_load_duration": 0.0,
+            "total_duration": 0.0,
+            "load_duration": 0.0,
+            "prompt_eval_count": 0,
+            "prompt_eval_duration": 0.0,
+            "prompt_eval_rate": 0.0,
+            "eval_count": 0,
+            "eval_duration": 0.0,
+            "eval_rate": 0.0
+        }
+    },
+    "qwen2.5-coder:latest": {
+        "model_id": "dae161e27b0e",
+        "size": "4.7",
+        "cost_per_1k_tokens": 0.0,
+        "architecture": "qwen2",
+        "parameters": "7.6B",
+        "parameters_count": 7600000000.0,
+        "context_length": 32768,
+        "embedding_length": "3584",
+        "quantization": "Q4_K_M",
+        "capabilities": [
+            "completion",
+            "tools",
+            "insert"
+        ],
+        "stop_tokens": [],
+        "system_prompt": "You are Qwen, created by Alibaba Cloud. You are a helpful assistant.",
+        "model_parameters": {},
+        "license": "Apache License Version 2.0, January 2004",
+        "benchmark": {
+            "cold_load_duration": 2.82393975,
+            "warm_load_duration": 0.125361583,
+            "total_duration": 3.241518708,
+            "load_duration": 0.125361583,
+            "prompt_eval_count": 33,
+            "prompt_eval_duration": 0.119575208,
+            "prompt_eval_rate": 275.98,
+            "eval_count": 21,
+            "eval_duration": 2.96997104,
+            "eval_rate": 7.07
+        }
+    },
+    "qwen3:0.6b": {
+        "model_id": "7df6b6e09427",
+        "size": "522",
+        "cost_per_1k_tokens": 0.0,
+        "architecture": "qwen3",
+        "parameters": "751.63M",
+        "parameters_count": 751630000.0,
+        "context_length": 40960,
+        "embedding_length": "1024",
+        "quantization": "Q4_K_M",
+        "capabilities": [
+            "completion",
+            "tools",
+            "thinking"
+        ],
+        "stop_tokens": [
+            "<|im_start|>",
+            "<|im_end|>"
+        ],
+        "system_prompt": null,
+        "model_parameters": {
+            "repeat_penalty": 1,
+            "temperature": 0.6,
+            "top_k": 20,
+            "top_p": 0.95
+        },
+        "license": "Apache License Version 2.0, January 2004",
+        "benchmark": {
+            "cold_load_duration": 1.066913209,
+            "warm_load_duration": 0.124922333,
+            "total_duration": 6.348625167,
+            "load_duration": 0.124922333,
+            "prompt_eval_count": 14,
+            "prompt_eval_duration": 0.022832834,
+            "prompt_eval_rate": 613.15,
+            "eval_count": 324,
+            "eval_duration": 6.112682162,
+            "eval_rate": 53.0
+        }
+    },
+    "gemma3:270m": {
+        "model_id": "e7d36fb2c3b3",
+        "size": "291",
+        "cost_per_1k_tokens": 0.0,
+        "architecture": "gemma3",
+        "parameters": "268.10M",
+        "parameters_count": 268100000.00000003,
+        "context_length": 32768,
+        "embedding_length": "640",
+        "quantization": "Q8_0",
+        "capabilities": [
+            "completion"
+        ],
+        "stop_tokens": [
+            "<end_of_turn>"
+        ],
+        "system_prompt": null,
+        "model_parameters": {
+            "top_k": 64,
+            "top_p": 0.95
+        },
+        "license": "Gemma Terms of Use Last modified: February 21, 2024",
+        "benchmark": {
+            "cold_load_duration": 0.7087458329999999,
+            "warm_load_duration": 0.15775941599999999,
+            "total_duration": 0.386216458,
+            "load_duration": 0.15775941599999999,
+            "prompt_eval_count": 13,
+            "prompt_eval_duration": 0.021766834,
+            "prompt_eval_rate": 597.24,
+            "eval_count": 21,
+            "eval_duration": 0.191631503,
+            "eval_rate": 109.59
+        }
+    },
+    "deepseek-coder:latest": {
+        "model_id": "3ddd2d3fc8d2",
+        "size": "776",
+        "cost_per_1k_tokens": 0.0,
+        "architecture": "llama",
+        "parameters": "1B",
+        "parameters_count": 1000000000.0,
+        "context_length": 16384,
+        "embedding_length": "2048",
+        "quantization": "Q4_0",
+        "capabilities": [
+            "completion"
+        ],
+        "stop_tokens": [],
+        "system_prompt": "You are an AI programming assistant, utilizing the Deepseek Coder model, developed by Deepseek Company, and you only answer questions related to computer science. For politically sensitive questions, security and privacy issues, and other non-computer science questions, you will refuse to answer.",
+        "model_parameters": {},
+        "license": "DEEPSEEK LICENSE AGREEMENT Version 1.0, 23 October 2023",
+        "benchmark": {
+            "cold_load_duration": 0.46537183299999996,
+            "warm_load_duration": 0.061052333,
+            "total_duration": 2.411867042,
+            "load_duration": 0.061052333,
+            "prompt_eval_count": 74,
+            "prompt_eval_duration": 0.016036125,
+            "prompt_eval_rate": 4614.58,
+            "eval_count": 89,
+            "eval_duration": 2.30944204,
+            "eval_rate": 38.54
+        }
+    },
+    "qwen2.5-coder:0.5b": {
+        "model_id": "4ff64a7f502a",
+        "size": "397",
+        "cost_per_1k_tokens": 0.0,
+        "architecture": "qwen2",
+        "parameters": "494.03M",
+        "parameters_count": 494030000.0,
+        "context_length": 32768,
+        "embedding_length": "896",
+        "quantization": "Q4_K_M",
+        "capabilities": [
+            "completion",
+            "tools",
+            "insert"
+        ],
+        "stop_tokens": [],
+        "system_prompt": "You are Qwen, created by Alibaba Cloud. You are a helpful assistant.",
+        "model_parameters": {},
+        "license": "Apache License Version 2.0, January 2004",
+        "benchmark": {
+            "cold_load_duration": 0.726887916,
+            "warm_load_duration": 0.12201495799999999,
+            "total_duration": 0.366514291,
+            "load_duration": 0.12201495799999999,
+            "prompt_eval_count": 33,
+            "prompt_eval_duration": 0.021428332999999997,
+            "prompt_eval_rate": 1540.02,
+            "eval_count": 21,
+            "eval_duration": 0.205766376,
+            "eval_rate": 102.06
+        }
+    },
+    "qwen:0.5b": {
+        "model_id": "b5dc5e784f2a",
+        "size": "394",
+        "cost_per_1k_tokens": 0.0,
+        "architecture": "qwen2",
+        "parameters": "620M",
+        "parameters_count": 620000000.0,
+        "context_length": 32768,
+        "embedding_length": "1024",
+        "quantization": "Q4_0",
+        "capabilities": [
+            "completion"
+        ],
+        "stop_tokens": [
+            "<|im_start|>",
+            "<|im_end|>"
+        ],
+        "system_prompt": null,
+        "model_parameters": {},
+        "license": "Tongyi Qianwen RESEARCH LICENSE AGREEMENT Tongyi Qianwen Release Date: November 30, 2023",
+        "benchmark": {
+            "cold_load_duration": 0.960004875,
+            "warm_load_duration": 0.115223208,
+            "total_duration": 0.234871042,
+            "load_duration": 0.115223208,
+            "prompt_eval_count": 12,
+            "prompt_eval_duration": 0.010027333000000001,
+            "prompt_eval_rate": 1196.73,
+            "eval_count": 14,
+            "eval_duration": 0.098551417,
+            "eval_rate": 142.06
+        }
+    },
+    "qwen2.5:0.5b": {
+        "model_id": "a8b0c5157701",
+        "size": "397",
+        "cost_per_1k_tokens": 0.0,
+        "architecture": "qwen2",
+        "parameters": "494.03M",
+        "parameters_count": 494030000.0,
+        "context_length": 32768,
+        "embedding_length": "896",
+        "quantization": "Q4_K_M",
+        "capabilities": [
+            "completion",
+            "tools"
+        ],
+        "stop_tokens": [],
+        "system_prompt": "You are Qwen, created by Alibaba Cloud. You are a helpful assistant.",
+        "model_parameters": {},
+        "license": "Apache License Version 2.0, January 2004",
+        "benchmark": {
+            "cold_load_duration": 0.715735334,
+            "warm_load_duration": 0.116563416,
+            "total_duration": 0.372289541,
+            "load_duration": 0.116563416,
+            "prompt_eval_count": 33,
+            "prompt_eval_duration": 0.015526292,
+            "prompt_eval_rate": 2125.43,
+            "eval_count": 24,
+            "eval_duration": 0.220678712,
+            "eval_rate": 108.76
+        }
+    },
+    "qwen2:0.5b": {
+        "model_id": "6f48b936a09f",
+        "size": "352",
+        "cost_per_1k_tokens": 0.0,
+        "architecture": "qwen2",
+        "parameters": "494.03M",
+        "parameters_count": 494030000.0,
+        "context_length": 32768,
+        "embedding_length": "896",
+        "quantization": "Q4_0",
+        "capabilities": [
+            "completion"
+        ],
+        "stop_tokens": [
+            "<|im_start|>",
+            "<|im_end|>"
+        ],
+        "system_prompt": null,
+        "model_parameters": {},
+        "license": "Apache License Version 2.0, January 2004",
+        "benchmark": {
+            "cold_load_duration": 0.711986625,
+            "warm_load_duration": 0.11639604199999999,
+            "total_duration": 0.3949305,
+            "load_duration": 0.11639604199999999,
+            "prompt_eval_count": 12,
+            "prompt_eval_duration": 0.019750458,
+            "prompt_eval_rate": 607.58,
+            "eval_count": 28,
+            "eval_duration": 0.237950166,
+            "eval_rate": 117.67
+        }
+    },
+    "smollm2:360m": {
+        "model_id": "297281b699fc",
+        "size": "725",
+        "cost_per_1k_tokens": 0.0,
+        "architecture": "llama",
+        "parameters": "361.82M",
+        "parameters_count": 361820000.0,
+        "context_length": 8192,
+        "embedding_length": "960",
+        "quantization": "F16",
+        "capabilities": [
+            "completion"
+        ],
+        "stop_tokens": [
+            "<|im_start|>",
+            "<|im_end|>"
+        ],
+        "system_prompt": "You are a helpful AI assistant named SmolLM, trained by Hugging Face",
+        "model_parameters": {},
+        "license": "Apache License Version 2.0, January 2004",
+        "benchmark": {
+            "cold_load_duration": 0.474269,
+            "warm_load_duration": 0.039081667,
+            "total_duration": 0.265459458,
+            "load_duration": 0.039081667,
+            "prompt_eval_count": 34,
+            "prompt_eval_duration": 0.010386583,
+            "prompt_eval_rate": 3273.45,
+            "eval_count": 22,
+            "eval_duration": 0.209330415,
+            "eval_rate": 105.1
+        }
+    },
+    "smollm:360m": {
+        "model_id": "b3ba1ccba2b8",
+        "size": "229",
+        "cost_per_1k_tokens": 0.0,
+        "architecture": "llama",
+        "parameters": "361.82M",
+        "parameters_count": 361820000.0,
+        "context_length": 2048,
+        "embedding_length": "960",
+        "quantization": "Q4_0",
+        "capabilities": [
+            "completion"
+        ],
+        "stop_tokens": [
+            "<|im_start|>",
+            "<|im_end|>"
+        ],
+        "system_prompt": null,
+        "model_parameters": {
+            "temperature": 0.2,
+            "top_p": 0.9
+        },
+        "license": "Apache License Version 2.0, January 2004",
+        "benchmark": {
+            "cold_load_duration": 0.472812583,
+            "warm_load_duration": 0.039267958,
+            "total_duration": 0.855537,
+            "load_duration": 0.039267958,
+            "prompt_eval_count": 13,
+            "prompt_eval_duration": 0.006718208,
+            "prompt_eval_rate": 1935.04,
+            "eval_count": 90,
+            "eval_duration": 0.785507202,
+            "eval_rate": 114.58
+        }
+    },
+    "smollm2:135m": {
+        "model_id": "9077fe9d2ae1",
+        "size": "270",
+        "cost_per_1k_tokens": 0.0,
+        "architecture": "llama",
+        "parameters": "134.52M",
+        "parameters_count": 134520000.0,
+        "context_length": 8192,
+        "embedding_length": "576",
+        "quantization": "F16",
+        "capabilities": [
+            "completion"
+        ],
+        "stop_tokens": [
+            "<|im_start|>",
+            "<|im_end|>"
+        ],
+        "system_prompt": "You are a helpful AI assistant named SmolLM, trained by Hugging Face",
+        "model_parameters": {},
+        "license": "Apache License Version 2.0, January 2004",
+        "benchmark": {
+            "cold_load_duration": 0.476410583,
+            "warm_load_duration": 0.040501209,
+            "total_duration": 0.296199209,
+            "load_duration": 0.040501209,
+            "prompt_eval_count": 34,
+            "prompt_eval_duration": 0.006333625,
+            "prompt_eval_rate": 5368.17,
+            "eval_count": 36,
+            "eval_duration": 0.239405498,
+            "eval_rate": 150.37
+        }
+    },
+    "smollm:135m": {
+        "model_id": "b0b2a4617438",
+        "size": "91",
+        "cost_per_1k_tokens": 0.0,
+        "architecture": "llama",
+        "parameters": "134.52M",
+        "parameters_count": 134520000.0,
+        "context_length": 2048,
+        "embedding_length": "576",
+        "quantization": "Q4_0",
+        "capabilities": [
+            "completion"
+        ],
+        "stop_tokens": [
+            "<|im_start|>",
+            "<|im_end|>"
+        ],
+        "system_prompt": null,
+        "model_parameters": {
+            "temperature": 0.2,
+            "top_p": 0.9
+        },
+        "license": "Apache License Version 2.0, January 2004",
+        "benchmark": {
+            "cold_load_duration": 0.595269042,
+            "warm_load_duration": 0.077048709,
+            "total_duration": 3.043792959,
+            "load_duration": 0.077048709,
+            "prompt_eval_count": 13,
+            "prompt_eval_duration": 0.012302916,
+            "prompt_eval_rate": 1056.66,
+            "eval_count": 359,
+            "eval_duration": 2.733491009,
+            "eval_rate": 131.33
+        }
+    }
+}

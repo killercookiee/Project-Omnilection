@@ -9,8 +9,7 @@
 
 import json
 import random
-
-from traitlets import Any, Dict
+from typing import Any, Dict
 
 
 class UniversalTopologyMigration:

@@ -635,14 +635,14 @@ class PromptChainRunner:
     
     def run_prompt_chain(
         self, 
-        prompt_chain: List[Tuple[str, ...]], 
+        prompt_chain: List[Tuple[str, List[str]]], 
         initial_input: str,
     ) -> List[Tuple[str, Dict[str, Any]]]:
         """
         Run a chain of prompts through different models sequentially.
         
         Args:
-            prompt_chain: List of tuples, each containing (model_name, *prompt_segments)
+            prompt_chain: List of (model_name, [prompt_segment_1, prompt_segment_2, ...]) tuples
             initial_input: The initial input to start the chain
             verbose: Whether to print progress information
             timeout: Maximum time in seconds to wait for each model run
@@ -673,7 +673,7 @@ class PromptChainRunner:
         for step_idx, step in enumerate(prompt_chain):
             # Extract model name and prompt segments
             model_name = step[0]
-            prompt_segments = step[1:]
+            prompt_segments = step[1]
             
             # Combine prompt segments into a single prompt
             prompt_text = "".join(prompt_segments)
@@ -728,12 +728,12 @@ class PromptChainRunner:
         """
         return self.model_registry.get(model_name)
     
-    def validate_prompt_chain(self, prompt_chain: List[Tuple[str, ...]]) -> Tuple[bool, List[str]]:
+    def validate_prompt_chain(self, prompt_chain: List[Tuple[str, List[str]]]) -> Tuple[bool, List[str]]:
         """
         Validate that all models in a prompt chain are available.
         
         Args:
-            prompt_chain: List of tuples containing (model_name, *prompt_segments)
+            prompt_chain: List of (model_name, [prompt_segment_1, prompt_segment_2, ...]) tuples
             
         Returns:
             Tuple of (is_valid, list_of_missing_models)
@@ -844,8 +844,8 @@ if __name__ == "__main__":
     # ============ RUNNING A PROMPT CHAIN ============
     # Example prompt chain (update model names to match your Ollama models)
     prompt_chain = [
-        ("smollm:135m", "Summarize this: ", "Be concise."), 
-        ("qwen:0.5b", "Improve ", "the following text: ")
+        ("smollm:135m", ["Summarize this: ", "Be concise."]), 
+        ("qwen:0.5b", ["Improve ", "the following text: "])
     ]
     
     initial_input = "What is the capital of France?"

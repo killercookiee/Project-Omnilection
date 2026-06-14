@@ -12,7 +12,7 @@
 """
 Genetic_algorithm_processes/S2_recombination/methods/crossover/model_based_crossover.py
 """
-from .N_crossover_multiparent import NCrossoverMultiparent
+from ._N_crossover_multiparent import NCrossoverMultiparent
 
 
 class ModelBasedCrossover:

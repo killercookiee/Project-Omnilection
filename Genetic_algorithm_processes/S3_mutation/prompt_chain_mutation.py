@@ -2,52 +2,115 @@
 Genetic_algorithm_processes/S3_mutation/prompt_chain_mutation.py
 """
 
-from typing import Any
 import random
+import hashlib
+from typing import Any
+from Genetic_algorithm_processes.Data.general_datamanager import GeneralDataManager
 
-
-from Genetic_algorithm_processes.S3_mutation.methods.synonym_mutation import SynonymMutation
-from Genetic_algorithm_processes.S3_mutation.methods.shuffle_mutation import ShuffleMutation
-from Genetic_algorithm_processes.S3_mutation.methods.delete_mutation import DeleteMutation
+def get_chain_id(chain: list) -> str:
+    return f"chain_{hashlib.md5(str(chain).encode('utf-8')).hexdigest()[:12]}"
 
 class PromptChainMutation:
     def __init__(self,
-        mutation_chance: float = 0.2,
-        mutation_methods: list[Any] = [
-            SynonymMutation(mutation_rate=0.1).mutate,
-            ShuffleMutation(N_segment_cut=3, shuffling_constant=1.0).mutate,
-            DeleteMutation(min_segment_fraction=0.1, max_segment_fraction=0.3).mutate
-        ]
+        base_mutation_chance: float = 0.10,
+        min_mutation_chance: float = 0.02,
+        max_mutation_chance: float = 0.30,
+        low_lineage_threshold: float = 0.30, # A lineage score < 0.30 is considered an "Explorer"
+        target_explorer_ratio: tuple[float, float] = (0.20, 0.40), # We want 20% to 40% of the population to be explorers
+        mutation_methods: list[Any] = None,
+        gdm: GeneralDataManager = None,
+        verbose: bool = False
     ):
-        self.mutation_chance = mutation_chance
-        self.mutation_methods = mutation_methods
+        self.current_mutation_chance = base_mutation_chance
+        self.min_mutation_chance = min_mutation_chance
+        self.max_mutation_chance = max_mutation_chance
+        
+        self.low_lineage_threshold = low_lineage_threshold
+        self.target_explorer_min = target_explorer_ratio[0]
+        self.target_explorer_max = target_explorer_ratio[1]
 
-    def mutate_population(self, prompt_chain_population):
-        mutated_population = []
-        for prompt_chain in prompt_chain_population:
-            if random.random() < self.mutation_chance:
-                mutation_func = random.choice(self.mutation_methods)
-                mutated_prompt_chain = mutation_func(prompt_chain)
-                mutated_population.append(mutated_prompt_chain)
-            else:
-                mutated_population.append(prompt_chain)
-        return mutated_population
-    
-    def mutate_prompt_chain(self, prompt_chain):
-        if random.random() >= self.mutation_chance:
-            mutatation_func = random.choice(self.mutation_methods)
-            return mutatation_func(prompt_chain)
+        self.mutation_methods = mutation_methods or []
+        self.gdm = gdm
+        self.verbose = verbose
+
+    def adjust_mutation_rate(self, current_population_records: list[tuple]) -> None:
+        """
+        The Thermostat: Analyzes the current population's lineage scores 
+        and adjusts the global mutation rate to maintain diversity without causing chaos.
+        """
+        if not self.gdm or not current_population_records:
+            return
+
+        explorer_count = 0
+        total_count = len(current_population_records)
+
+        for rec in current_population_records:
+            chain_id = rec[0]
+            lf_score = self.gdm.lineage_score(chain_id)
+            if lf_score < self.low_lineage_threshold:
+                explorer_count += 1
+
+        explorer_ratio = explorer_count / total_count
+
+        # Adjust the thermostat
+        old_rate = self.current_mutation_chance
+        if explorer_ratio < self.target_explorer_min:
+            # Too stagnant! Crank up mutation by 50%
+            self.current_mutation_chance = min(self.max_mutation_chance, self.current_mutation_chance * 1.5)
+            status = "🔥 HEATING UP"
+        elif explorer_ratio > self.target_explorer_max:
+            # Too chaotic! Cool down mutation by 25%
+            self.current_mutation_chance = max(self.min_mutation_chance, self.current_mutation_chance * 0.75)
+            status = "❄️ COOLING DOWN"
         else:
-            return prompt_chain
+            status = "✅ STABLE"
 
-if __name__ == "__main__":
-    offspring_population = [
-        [("gpt-3.5-turbo", "This is an ", "input prompt"), ("gpt-4", "This ", "another ", "input ", "prompt")],
-        [("gpt-4", "Different input prompt here"), ("gpt-3.5-turbo", "", "Yet another prompt input")],
-        [("gpt-3.5-turbo", "Sample prompt one"), ("gpt-4", "Sample prompt two"), ("gpt-3.5-turbo", "Sample prompt three")],
-        [("gpt-4", "First prompt segment"), ("gpt-4", "Second prompt segment")],
-        [("gpt-3.5-turbo", "Only one prompt in this chain")]
-    ] 
-    mutation_instance = PromptChainMutation(mutation_chance=0.1)
-    mutated_population = mutation_instance.mutate_population(offspring_population)
-    print(f"Mutated Prompt Chain Population: {mutated_population}")
+        if self.verbose:
+            print(f"\n[Mutation Thermostat] Explorers: {explorer_ratio:.0%} (Target: {self.target_explorer_min:.0%}-{self.target_explorer_max:.0%})")
+            if old_rate != self.current_mutation_chance:
+                print(f"  {status} -> Rate shifted from {old_rate:.1%} to {self.current_mutation_chance:.1%}")
+            else:
+                print(f"  {status} -> Rate remains at {self.current_mutation_chance:.1%}")
+
+    def mutate_population(self, offspring_records: list[dict]) -> list[dict]:
+        mutated_records = []
+        mutations_applied = 0
+        
+        for record in offspring_records:
+            if random.random() < self.current_mutation_chance and self.mutation_methods:
+                mutation_func = random.choice(self.mutation_methods)
+                
+                # Execute the mutation
+                mutated_chain = mutation_func(record["chain"])
+                
+                # Check if it actually changed (LLM might have failed)
+                if mutated_chain != record["chain"]:
+                    new_id = get_chain_id(mutated_chain)
+                    old_id = record["chain_id"]
+                    
+                    metadata = record["metadata"].copy()
+                    metadata["mutated"] = True
+                    # If it's an object method, try to get class name, else function name
+                    method_name = getattr(mutation_func, '__self__', mutation_func).__class__.__name__
+                    metadata["mutation_method"] = method_name
+                    
+                    # Register the major mutation in heritage history immediately
+                    if self.gdm:
+                        self.gdm.register_intermediary_chain(new_id, mutated_chain, [old_id], metadata)
+                    
+                    mutated_records.append({
+                        "chain_id": new_id,
+                        "chain": mutated_chain,
+                        "parents": [old_id],
+                        "metadata": metadata
+                    })
+                    mutations_applied += 1
+                else:
+                    mutated_records.append(record)
+            else:
+                mutated_records.append(record)
+                
+        if self.verbose:
+            print(f"  [Mutation] {mutations_applied} individuals significantly mutated.")
+            
+        return mutated_records

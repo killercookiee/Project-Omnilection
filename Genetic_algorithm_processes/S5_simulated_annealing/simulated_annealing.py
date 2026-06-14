@@ -227,72 +227,66 @@ class SimulatedAnnealing:
         
         return best_prompt_chain, best_fitness
     
-    def simulate_annealing(self, total_prompt_chain_population: List[List[Tuple]], eval_context: dict) -> List[List[Tuple]]:
+    def optimize_single_record(self, initial_record: dict, eval_context: dict) -> Tuple[dict, float]:
+            """
+            Runs SA on a genetic envelope (OffspringRecord). 
+            """
+            current_record = copy.deepcopy(initial_record)
+            current_fitness = self.calculate_fitness(current_record["chain"], eval_context)
+            
+            best_record = copy.deepcopy(current_record)
+            best_fitness = current_fitness
+            
+            for step in range(self.steps):
+                # Mutate purely the chain, package back into the envelope
+                new_chain = self.mutate_prompt_chain(current_record["chain"])
+                new_fitness = self.calculate_fitness(new_chain, eval_context)
+                
+                temperature = self.get_temperature(step)
+                accept_prob = self.acceptance_probability(current_fitness, new_fitness, temperature)
+                
+                if random.random() < accept_prob:
+                    current_record["chain"] = new_chain
+                    current_record["metadata"]["sa_optimized"] = True
+                    current_fitness = new_fitness
+                    
+                    if current_fitness > best_fitness:
+                        best_record = copy.deepcopy(current_record)
+                        best_fitness = current_fitness
+            
+            return best_record, best_fitness
+
+    def simulate_annealing(self, offspring_records: List[dict], eval_context: dict) -> List[dict]:
         """
-        Apply simulated annealing to optimize a population of prompt chains.
-        
-        Process:
-        1. Evaluate all individuals in the population
-        2. Select elite individuals (top performers) to optimize
-        3. Run simulated annealing on each elite to further improve them
-        4. Keep non-elite individuals unchanged to preserve diversity
-        5. Return optimized elite + unchanged non-elite population
-        
-        Parameters:
-        -----------
-        total_prompt_chain_population : List[List[Tuple]]
-            Population of prompt chains to optimize
-        
-        Returns:
-        --------
-        List[List[Tuple]] : Population with optimized elite and unchanged non-elite
+        Applies SA to an entire population of OffspringRecords.
         """
-        if not total_prompt_chain_population:
+        if not offspring_records:
             return []
         
-        population_size = len(total_prompt_chain_population)
+        population_size = len(offspring_records)
         elite_size = max(1, int(population_size * self.elite_selection_ratio))
         
-        # Evaluate all individuals
-        population_with_fitness = []
-        for prompt_chain in total_prompt_chain_population:
-            fitness = self.calculate_fitness(prompt_chain, eval_context)
-            population_with_fitness.append((prompt_chain, fitness))
+        pop_with_fitness = []
+        for record in offspring_records:
+            fitness = self.calculate_fitness(record["chain"], eval_context)
+            pop_with_fitness.append((record, fitness))
+            
+        pop_with_fitness.sort(key=lambda x: x[1], reverse=True)
         
-        # Sort by fitness (descending)
-        population_with_fitness.sort(key=lambda x: x[1], reverse=True)
-        
-        # Select elite individuals to optimize
-        elite_individuals = [prompt_chain for prompt_chain, _ in population_with_fitness[:elite_size]]
+        elite_records = [rec for rec, _ in pop_with_fitness[:elite_size]]
+        non_elite_records = [rec for rec, _ in pop_with_fitness[elite_size:]]
 
-        # Select non-elite individuals to keep unchanged (preserves diversity)
-        non_elite_individuals = [prompt_chain for prompt_chain, _ in population_with_fitness[elite_size:]]
-
-        # Track best overall before optimization
-        if population_with_fitness[0][1] > self.best_fitness:
-            self.best_prompt_chain = copy.deepcopy(population_with_fitness[0][0])
-            self.best_fitness = population_with_fitness[0][1]
-        
-        # Run simulated annealing on elite individuals
         optimized_elite = []
-        
-        for elite_individual in elite_individuals:
-            # Optimize using simulated annealing
-            optimized_prompt_chain, optimized_fitness = self.optimize_single_prompt_chain(elite_individual, eval_context)
-            optimized_elite.append(optimized_prompt_chain)
+        for elite_rec in elite_records:
+            opt_rec, opt_fitness = self.optimize_single_record(elite_rec, eval_context)
+            optimized_elite.append(opt_rec)
             
-            # Track fitness history
-            self.fitness_history.append(optimized_fitness)
-            
-            # Update global best if improved
-            if optimized_fitness > self.best_fitness:
-                self.best_prompt_chain = copy.deepcopy(optimized_prompt_chain)
-                self.best_fitness = optimized_fitness
-        
-        # Combine optimized elite with unchanged non-elite (preserves diversity)
-        final_population = optimized_elite + non_elite_individuals
-        
-        return final_population
+            self.fitness_history.append(opt_fitness)
+            if opt_fitness > self.best_fitness:
+                self.best_prompt_chain = copy.deepcopy(opt_rec["chain"])
+                self.best_fitness = opt_fitness
+                
+        return optimized_elite + non_elite_records
     
     def get_best_prompt_chain(self) -> Tuple[List[Tuple], float]:
         """

@@ -171,6 +171,7 @@ class LineageScorer:
         beta: float  = 1.0,
         n_max: float = 3.0,  # Maturity plateau threshold
         use_embeddings: bool = True,
+        emb_cache: dict = None,
         verbose: bool = False,
     ) -> None:
         self.heritage_data  = heritage_data
@@ -181,6 +182,9 @@ class LineageScorer:
         self.use_embeddings = use_embeddings
         self.verbose        = verbose
         self._emb_cache: dict[str, list[float]] = {}
+
+        # USE THE PASSED CACHE, OR FALLBACK TO EMPTY DICT
+        self._emb_cache: dict[str, list[float]] = emb_cache if emb_cache is not None else {}
 
     def _embed(self, text: str) -> Optional[list[float]]:
         if text in self._emb_cache:

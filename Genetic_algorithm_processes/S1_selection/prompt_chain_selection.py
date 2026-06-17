@@ -23,8 +23,10 @@ class PromptChainSelection:
         if self.verbose:
             print(f"\n[PromptChainSelection] Running {type(self.selection_algorithm).__name__} on {len(population_records)} individuals...")
 
-        # Map to the format (record, fitness) for the selection algorithm
-        population_fitness = [(rec, rec[2]) for rec in population_records]
+        # Map to the format (record, fitness) for the selection algorithm.
+        # We add a microscopic epsilon (1e-9) to prevent division-by-zero crashes 
+        # in the rare event that the ENTIRE population completely fails (fitness = 0.0).
+        population_fitness = [(rec, max(rec[2], 1e-9)) for rec in population_records]
         
         # Selection algorithm returns the selected records
         selected_records = self.selection_algorithm.select(population_fitness)

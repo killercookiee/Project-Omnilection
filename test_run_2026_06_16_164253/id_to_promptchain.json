@@ -1,0 +1,19 @@
+{
+    "chain_9a79b262c798": [
+        [
+            "smollm:360m",
+            [
+                "# Access server configuration\n    server_name = ctx.fastmcp.name"
+            ]
+        ]
+    ],
+    "chain_ab33e3d69b27": [
+        [
+            "gemma3:latest",
+            [
+                "### 1. Conflict Resolution\nTechniques for handling merge conflicts effectively:\n- Analyze conflicting changes to understand the intent of each version\n- Use three-way merge visualization to identify the common ancestor\n- Resolve conflicts preserving both parties' intentions where possible\n- Test resolved code thoroughly before committing the merge result\n- Use merge tools (VS Code, IntelliJ, meld) for complex multi-file conflicts",
+                "### 3. Commit Practices\n- Write conventional commit messages (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`)\n- Create atomic commits representing single logical changes\n- Use `git commit --amend` appropriately vs creating new commits\n- Structure commits to be easy to review, bisect, and revert\n- Sign commits with GPG for verified authorship"
+            ]
+        ]
+    ]
+}

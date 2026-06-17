@@ -1,0 +1,20 @@
+{
+    "chain_fed4e9e82276": [
+        [
+            "qwen2.5-coder:0.5b",
+            [
+                "### \u6b65\u9aa41: \u8ba4\u8bc1\u767b\u9646\n\u4f7f\u7528authenticate\u5de5\u5177\uff0c\u4ece\u914d\u7f6e\u6587\u4ef6\u8bfb\u53d6\u51ed\u636e\uff1a\n- \u6587\u4ef6\uff1auser_config.json\n\u8ba4\u8bc1\u540e\uff0c\u53ef\u4ee5\u4fdd\u6301\u767b\u9646\u72b6\u60016\u5c0f\u65f6\uff0c\u8d85\u65f6\u9700\u8981\u91cd\u65b0\u8ba4\u8bc1"
+            ]
+        ]
+    ],
+    "chain_a9daf201d977": [
+        [
+            "qwen2.5-coder:0.5b",
+            [
+                "Core features:\n- Photo audit: user describes their photos (up to 6) \u2014 AI scores each on energy, approachability, social proof, and uniqueness. Returns a ranked order recommendation with one-line reasoning per photo\n- Bio rewriter: user pastes current bio, clicks \"Optimize\", receives 3 rewritten versions in distinct tones (playful / authentic / direct). Each version includes a word count and a predicted \"swipe right rate\" label (Low / Medium / High)\n- Icebreaker generator: user describes a match's profile in a few sentences \u2014 AI generates 5 personalized openers ranked by predicted response rate, each with a one-line explanation of why it works\n- Profile score dashboard: a 0\u2013100 composite score across bio quality, photo strength, and opener effectiveness \u2014 updates live\n- Export: formatted PDF of all assets titled \"My Profile Package\"",
+                "TONE FOR ALL PLATFORMS:\n- Calm and informative. Not alarmist.\n- Written as if a knowledgeable person is giving a heads-up to their network\n- No hype, no scare tactics, no exaggerated language\n- Accurate to the scam briefing content \u2014 do not invent new facts",
+                "**Trend Evaluation Criteria**:\n1. Virality Potential (shareable, memeable, demonstrable)\n2. Monetization Path (subscriptions, in-app purchases, ads)\n3. Technical Feasibility (can build MVP in 6 days)\n4. Market Size (minimum 100K potential users)\n5. Differentiation Opportunity (unique angle or improvement)"
+            ]
+        ]
+    ]
+}

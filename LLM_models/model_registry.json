@@ -476,5 +476,25 @@
             "eval_duration": 2.733491009,
             "eval_rate": 131.33
         }
+    },
+    "all-minilm:l6-v2": {
+        "model_id": "1b226e2802db",
+        "size": "45",
+        "cost_per_1k_tokens": 0.0,
+        "architecture": "bert",
+        "parameters": "23M",
+        "parameters_count": 23000000.0,
+        "context_length": 512,
+        "embedding_length": "384",
+        "quantization": "F16",
+        "capabilities": [
+            "embedding"
+        ],
+        "stop_tokens": [],
+        "system_prompt": null,
+        "model_parameters": {
+            "num_ctx": 256
+        },
+        "license": "Apache License Version 2.0, January 2004"
     }
 }

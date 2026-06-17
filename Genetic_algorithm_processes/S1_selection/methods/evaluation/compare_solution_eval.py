@@ -77,10 +77,13 @@ Respond with ONLY a single integer between 0 and 100. No explanation, no punctua
         # Best-guess: take the last number found (models tend to conclude with their answer)
         matches = re.findall(r'\b(\d{1,3})\b', cleaned)
         if matches:
-            print(f"[CompareSolutionEval] ⚠️  Model didn't follow instructions — best-guess extraction (last number): {matches[-1]}")
+            # ONLY warn if it's chatty AND verbose mode is on
+            if self.verbose and len(cleaned) > 5:
+                print(f"[CompareSolutionEval] ⚠️  Model was chatty — extracted number: {matches[-1]}")
             return max(0.0, min(100.0, float(matches[-1])))
 
-        print(f"[CompareSolutionEval] ⚠️  Could not parse score from: {cleaned!r} — defaulting to 0.0")
+        if self.verbose:
+            print(f"[CompareSolutionEval] ❌  Could not parse score from: {cleaned!r} — defaulting to 0.0")
         return 0.0
 
 

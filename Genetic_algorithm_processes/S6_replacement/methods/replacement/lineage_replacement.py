@@ -20,7 +20,7 @@ class LineageReplacement:
     def replace(self, combined_population_with_meta: list[tuple]) -> list[tuple]:
         """
         combined_population_with_meta: list of tuples
-        (chain, fitness, lineage_score, family_id, family_size)
+        (chain_record, fitness, lineage_score, family_size)
         """
         if not combined_population_with_meta:
             return []
@@ -29,7 +29,9 @@ class LineageReplacement:
         unique_population = []
         seen_chains = set()
         for ind in combined_population_with_meta:
-            chain_str = str(ind[0])
+            # ind[0] is the full evaluated record: (chain_id, chain, fitness, metadata)
+            # ind[0][1] is the actual prompt chain list
+            chain_str = str(ind[0][1]) 
             if chain_str not in seen_chains:
                 unique_population.append(ind)
                 seen_chains.add(chain_str)
@@ -39,7 +41,7 @@ class LineageReplacement:
         mature_pool = []
         
         for ind in unique_population:
-            family_size = ind[4]
+            family_size = ind[3]  # <--- FIXED: Now correctly looks at index 3
             if family_size < self.maturity_threshold:
                 young_pool.append(ind)
             else:
@@ -64,7 +66,6 @@ class LineageReplacement:
         elite_quota += spillover
 
         # 6. Fill Elite Quota (Keep best mature chains)
-        # This naturally kills High-Lineage/Low-Fitness chains because they are sorted out
         elites_kept = mature_pool[:elite_quota]
         new_population.extend(elites_kept)
 
@@ -87,7 +88,6 @@ class LineageReplacement:
                 print(f"      Best       : {scores[0]:.3f}  |  Worst kept: {scores[-1]:.3f}  |  Avg: {sum(scores)/len(scores):.3f}")
             print(f"{'─'*40}\n")
 
-        # Strip the extra metadata (lineage, family_id, size) before returning to the main GA pipeline
-        # The main pipeline expects: (chain_id, chain, fitness, metadata)
-        # We will handle this packaging in the wrapper class.
-        return new_population
+        # Strip the extra metadata (lineage, family_size) before returning to the main GA pipeline
+        # Returning just the base records: (chain_id, chain, fitness, metadata)
+        return [ind[0] for ind in new_population]

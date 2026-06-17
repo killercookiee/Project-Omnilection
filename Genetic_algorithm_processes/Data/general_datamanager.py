@@ -6,6 +6,8 @@ import json
 import os
 from datetime import datetime, timezone
 
+from Genetic_algorithm_processes.Data.lineage_scoring import LineageScorer
+
 
 # Example heritage data structure (in heritage_data.json):
 # heritage_database = {
@@ -59,11 +61,14 @@ from datetime import datetime, timezone
 # prompt_chain_id_1, [("modelA", ["prompt_section_1", "prompt_section_2"]), ("modelB", ["prompt_section_3", "prompt_section_4"]), ...]
 # prompt_chain_id_2, ...
 
+
 def _now_iso() -> str:
+    """Return the current UTC time as an ISO-8601 string."""
     return datetime.now(timezone.utc).isoformat()
 
+
 class HeritageDataManager:
-    def __init__(self, heritage_database_file: str = "heritage_data.json"):
+    def __init__(self, heritage_database_file: str):
         self.heritage_database_file = heritage_database_file
         self.local_heritage_database = self._load_heritage_database()
 
@@ -72,39 +77,43 @@ class HeritageDataManager:
             with open(self.heritage_database_file, "r") as f:
                 return json.load(f)
         except FileNotFoundError:
-            return {"generations": 0, "version": "1.0", "size": 0, "prompt_chains": {}}
+            return {
+                "generations": 0,
+                "version": "1.0",
+                "size": 0,
+                "prompt_chains": {},
+            }
 
     def _save_heritage_database(self) -> None:
         with open(self.heritage_database_file, "w") as f:
             json.dump(self.local_heritage_database, f, indent=4)
 
-    def add_new(
-        self,
-        prompt_chain_id: str,
-        parents: list[str],
-        fitness: float | None,
-        generation: list[int],
-        metadata: dict = None,
-    ) -> None:
+    def add_new(self, prompt_chain_id: str, parents: list[str], fitness: float | None, generation: list[int], metadata: dict = None) -> None:
         chains: dict = self.local_heritage_database.setdefault("prompt_chains", {})
-
         if prompt_chain_id in chains:
-            return  # already present – do not overwrite
+            return
 
         now = _now_iso()
+        
+        if metadata is None:
+            metadata = {}
+            
+        metadata.setdefault("creation_time", now)
+        metadata.setdefault("modification_time", now)
+
         chains[prompt_chain_id] = {
             "parents": parents,
             "fitness": fitness,
             "generation": generation,
-            "metadata": metadata or {"creation_time": now, "modification_time": now},
+            "metadata": metadata,
         }
 
-        all_gens = [g for entry in chains.values() for g in entry["generation"]]
+        all_gens = [g for entry in chains.values() for g in entry.get("generation", [])]
         self.local_heritage_database["generations"] = max(all_gens) if all_gens else 0
         self.local_heritage_database["size"] = len(chains)
         self._save_heritage_database()
 
-    def update_population(self, current_population: list[list[tuple]]) -> None:
+    def update_population(self, current_population: list[tuple]) -> None:
         chains: dict = self.local_heritage_database.setdefault("prompt_chains", {})
         now = _now_iso()
 
@@ -116,7 +125,7 @@ class HeritageDataManager:
 
             if prompt_chain_id in chains:
                 record = chains[prompt_chain_id]
-                existing_gens: list = record["generation"]
+                existing_gens: list = record.get("generation", [])
                 for g in meta_generation:
                     if g not in existing_gens:
                         existing_gens.append(g)
@@ -129,17 +138,20 @@ class HeritageDataManager:
                     "parents": [],
                     "fitness": fitness,
                     "generation": meta_generation,
-                    "metadata": metadata or {"creation_time": now, "modification_time": now},
+                    "metadata": metadata or {
+                        "creation_time": now,
+                        "modification_time": now,
+                    },
                 }
 
-        all_gens = [g for rec in chains.values() for g in rec["generation"]]
+        all_gens = [g for rec in chains.values() for g in rec.get("generation", [])]
         self.local_heritage_database["generations"] = max(all_gens) if all_gens else 0
         self.local_heritage_database["size"] = len(chains)
         self._save_heritage_database()
 
 
 class PopulationDataManager:
-    def __init__(self, population_data_file: str = "population_data.json"):
+    def __init__(self, population_data_file: str):
         self.population_data_file = population_data_file
         self.local_population_data: dict | None = None
         self._load_population_data(population_data_file)
@@ -149,17 +161,12 @@ class PopulationDataManager:
             with open(file_path, "r") as f:
                 raw = json.load(f)
             population = [tuple(item) for item in raw.get("population", [])]
-            self.local_population_data = {"population": population, "metadata": raw.get("metadata", {})}
+            self.local_population_data = {
+                "population": population,
+                "metadata": raw.get("metadata", {}),
+            }
         except FileNotFoundError:
             self.local_population_data = {"population": [], "metadata": {}}
-
-    def _save_population_data(self, file_path: str) -> None:
-        if self.local_population_data is None:
-            return
-        serialisable_population = [list(entry) for entry in self.local_population_data["population"]]
-        payload = {"population": serialisable_population, "metadata": self.local_population_data.get("metadata", {})}
-        with open(file_path, "w") as f:
-            json.dump(payload, f, indent=4)
 
     def update_population_data(self, current_population: list) -> None:
         now = _now_iso()
@@ -172,44 +179,65 @@ class PopulationDataManager:
 
         self.local_population_data = {
             "population": [tuple(entry) for entry in current_population],
-            "metadata": {"generation": generation, "creation_time": now, "modification_time": now},
+            "metadata": {
+                "generation": generation,
+                "creation_time": now,
+                "modification_time": now,
+            },
         }
-        self._save_population_data(self.population_data_file)
+        with open(self.population_data_file, "w") as f:
+            serialisable_population = [list(entry) for entry in self.local_population_data["population"]]
+            json.dump({"population": serialisable_population, "metadata": self.local_population_data["metadata"]}, f, indent=4)
 
 
 class IDToPromptChainManager:
-    def __init__(self, id_to_promptchain_file: str = "id_to_promptchain.json"):
+    def __init__(self, id_to_promptchain_file: str):
         self.id_to_promptchain_file = id_to_promptchain_file
-        self._mapping: dict = self._load_id_to_promptchain_data(id_to_promptchain_file)
+        self._mapping: dict = self._load()
 
-    def _load_id_to_promptchain_data(self, file_path: str) -> dict:
+    def _load(self) -> dict:
         try:
-            with open(file_path, "r") as f:
+            with open(self.id_to_promptchain_file, "r") as f:
                 return json.load(f)
         except FileNotFoundError:
             return {}
-
-    def _save_id_to_promptchain_data(self, file_path: str) -> None:
-        with open(file_path, "w") as f:
-            json.dump(self._mapping, f, indent=4)
 
     def get_promptchain_from_id(self, prompt_chain_id: str):
         return self._mapping.get(prompt_chain_id)
 
     def add_or_update(self, prompt_chain_id: str, prompt_chain: list) -> None:
         self._mapping[prompt_chain_id] = prompt_chain
-        self._save_id_to_promptchain_data(self.id_to_promptchain_file)
+        with open(self.id_to_promptchain_file, "w") as f:
+            json.dump(self._mapping, f, indent=4)
+
+
+class EmbeddingCacheManager:
+    def __init__(self, cache_file: str):
+        self.cache_file = cache_file
+        self._cache: dict = self._load()
+
+    def _load(self) -> dict:
+        try:
+            with open(self.cache_file, "r") as f:
+                return json.load(f)
+        except FileNotFoundError:
+            return {}
+
+    def save(self) -> None:
+        with open(self.cache_file, "w") as f:
+            json.dump(self._cache, f)
 
 
 class GeneralDataManager:
-    def __init__(
-        self,
-        run_dir: str = None,
-        resume_from_save: bool = False
-    ):
+    def __init__(self, run_dir: str = None, resume_from_save: bool = False):
+        """
+        Coordinates individual data-managers under a unified facade.
+        Dynamically handles folder isolation and serialization overhead.
+        """
+        # ── Automated Directory Routing ──
         if resume_from_save and run_dir:
             self.run_dir = run_dir
-            print(f"[GeneralDataManager] 💾 Resuming state from directory: {self.run_dir}")
+            print(f"[GeneralDataManager] 💾 Resuming state from target directory: {self.run_dir}")
         else:
             timestamp = datetime.now().strftime("%Y_%m_%d_%H%M%S")
             self.run_dir = f"test_run_{timestamp}"
@@ -217,13 +245,17 @@ class GeneralDataManager:
 
         os.makedirs(self.run_dir, exist_ok=True)
 
+        # Map filesystem bounds inside the designated run folder
         heritage_path = os.path.join(self.run_dir, "heritage_data.json")
         population_path = os.path.join(self.run_dir, "population_data.json")
         id_path = os.path.join(self.run_dir, "id_to_promptchain.json")
+        emb_path = os.path.join(self.run_dir, "embedding_cache.json")
 
         self.heritage_data_manager = HeritageDataManager(heritage_path)
         self.population_data_manager = PopulationDataManager(population_path)
         self.id_to_promptchain_manager = IDToPromptChainManager(id_path)
+        self.embedding_cache_manager = EmbeddingCacheManager(emb_path)
+        
         self._lineage_cache: dict[str, float] = {}
 
     def register_new_chain(self, prompt_chain_id: str, prompt_chain: list, parents: list[str], fitness: float | None, generation: list[int], metadata: dict = None) -> None:
@@ -250,5 +282,42 @@ class GeneralDataManager:
     def get_chain(self, prompt_chain_id: str):
         return self.id_to_promptchain_manager.get_promptchain_from_id(prompt_chain_id)
 
-    # Note: To avoid errors, ensure `lineage_scoring.py` filters out any chains where `fitness is None` 
-    # before calculating averages.
+    def refresh_lineage_scores(self, use_embeddings: bool = True) -> None:
+        """Triggers the Prefix Tree Lineage Scorer against the database history."""
+        scorer = LineageScorer(
+            heritage_data=self.heritage_data_manager.local_heritage_database,
+            id_to_chain=self.id_to_promptchain_manager._mapping,
+            use_embeddings=use_embeddings,
+            emb_cache=self.embedding_cache_manager._cache,
+            verbose=False
+        )
+        self._lineage_cache = scorer.compute_all_lineage_scores()
+        self.embedding_cache_manager.save()
+
+    def lineage_score(self, prompt_chain_id: str) -> float:
+        """Returns the pre-calculated lineage score mapped via Prefix Tree math."""
+        return self._lineage_cache.get(prompt_chain_id, 0.0)
+
+    def get_population_with_lineage(self, selected_chains: list[list[tuple]]) -> list[tuple]:
+        """
+        Formats raw population vectors into the contextual tuple pool required by 
+        LineagePairing. Matches parent structures purely using structural prefixes.
+        
+        Returns: list of (chain_tuple, fitness, lineage_score, family_id)
+        """
+        chain_str_to_id = {str(chain): cid for cid, chain in self.id_to_promptchain_manager._mapping.items()}
+        heritage_chains = self.heritage_data_manager.local_heritage_database.get("prompt_chains", {})
+        
+        pop_with_lineage = []
+        for chain in selected_chains:
+            cid = chain_str_to_id.get(str(chain))
+            if cid and cid in heritage_chains:
+                record = heritage_chains[cid]
+                fitness = record.get("fitness", 0.0)
+                # Ensure fitness is not None before passing to pairer
+                if fitness is None:
+                    continue
+                lf_score = self.lineage_score(cid)
+                family_id = record.get("metadata", {}).get("family_id", cid)
+                pop_with_lineage.append((chain, float(fitness), lf_score, family_id))
+        return pop_with_lineage

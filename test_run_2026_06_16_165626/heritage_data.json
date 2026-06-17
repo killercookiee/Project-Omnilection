@@ -1,0 +1,41 @@
+{
+    "generations": 0,
+    "version": "1.0",
+    "size": 2,
+    "prompt_chains": {
+        "chain_5a3a4d8e2c23": {
+            "parents": [],
+            "fitness": 0.0,
+            "generation": [
+                0
+            ],
+            "metadata": {
+                "prefix_len": 1,
+                "recombination_mode": "initial",
+                "creation_time": "2026-06-16T14:57:17.545559+00:00",
+                "modification_time": "2026-06-16T14:57:17.675275+00:00",
+                "generation": 0,
+                "accuracy": 0.0,
+                "time_taken": 0.0,
+                "token_usage": 0
+            }
+        },
+        "chain_e9fac7845fd7": {
+            "parents": [],
+            "fitness": 0.0,
+            "generation": [
+                0
+            ],
+            "metadata": {
+                "prefix_len": 1,
+                "recombination_mode": "initial",
+                "creation_time": "2026-06-16T14:57:17.596811+00:00",
+                "modification_time": "2026-06-16T14:57:17.675275+00:00",
+                "generation": 0,
+                "accuracy": 1.0,
+                "time_taken": 21.537519917,
+                "token_usage": 208
+            }
+        }
+    }
+}

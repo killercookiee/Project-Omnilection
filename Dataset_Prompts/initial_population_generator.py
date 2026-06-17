@@ -23,6 +23,9 @@ Output format (matches the rest of the GA pipeline):
 
 from __future__ import annotations
 
+import os
+import json
+import hashlib
 import math
 import random
 import warnings
@@ -152,26 +155,43 @@ class InitialPopulationGenerator:
     def _embed_and_cluster(self) -> None:
         """
         Encode every segment with the sentence-transformer model and assign
-        each to a K-Means cluster.
-
-        Results are stored in:
-          - ``self.embeddings``         – L2-normalised embedding matrix
-          - ``self.cluster_labels``     – cluster assignment per segment
-          - ``self.cluster_to_indices`` – reverse map: cluster → segment indices
+        each to a K-Means cluster. Uses local disk caching to prevent
+        re-embedding a massive static gene pool on new runs.
         """
-        print("[InitialPopulationGenerator] Encoding segments …")
-        raw_embeddings = self._stmodel.encode(
-            self.segments,
-            show_progress_bar=True,
-            batch_size=256,
-            convert_to_numpy=True,
-        )
-        # L2-normalise so dot-product == cosine similarity everywhere
-        self.embeddings = normalize(raw_embeddings, norm="l2")
+        # Create a deterministic hash of the entire segment pool
+        pool_str = json.dumps(self.segments)
+        pool_hash = hashlib.md5(pool_str.encode('utf-8')).hexdigest()[:12]
+        
+        # Store these globally alongside the dataset, NOT in the specific run folder
+        cache_dir = "Dataset_Prompts/.cache"
+        os.makedirs(cache_dir, exist_ok=True)
+        
+        # Include n_clusters in the cluster filename so changing K regenerates the clusters
+        emb_file = os.path.join(cache_dir, f"embeddings_{pool_hash}.npy")
+        clus_file = os.path.join(cache_dir, f"clusters_{pool_hash}_k{self.n_clusters}.npy")
 
-        print("[InitialPopulationGenerator] K-Means clustering …")
-        kmeans = KMeans(n_clusters=self.n_clusters, n_init=10, random_state=42)
-        self.cluster_labels = kmeans.fit_predict(self.embeddings)
+        if os.path.exists(emb_file) and os.path.exists(clus_file):
+            print(f"[InitialPopulationGenerator] 💾 Loading cached embeddings and clusters from {cache_dir}...")
+            self.embeddings = np.load(emb_file)
+            self.cluster_labels = np.load(clus_file)
+        else:
+            print("[InitialPopulationGenerator] Encoding segments (This will only happen ONCE) …")
+            raw_embeddings = self._stmodel.encode(
+                self.segments,
+                show_progress_bar=True,
+                batch_size=256,
+                convert_to_numpy=True,
+            )
+            self.embeddings = normalize(raw_embeddings, norm="l2")
+
+            print("[InitialPopulationGenerator] K-Means clustering …")
+            kmeans = KMeans(n_clusters=self.n_clusters, n_init=10, random_state=42)
+            self.cluster_labels = kmeans.fit_predict(self.embeddings)
+
+            # Save to cache as fast binary numpy files
+            np.save(emb_file, self.embeddings)
+            np.save(clus_file, self.cluster_labels)
+            print(f"[InitialPopulationGenerator] 💾 Saved embeddings and clusters to {cache_dir}.")
 
         self.cluster_to_indices = {}
         for seg_idx, cluster_id in enumerate(self.cluster_labels):

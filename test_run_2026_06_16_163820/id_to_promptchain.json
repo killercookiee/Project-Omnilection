@@ -1,0 +1,21 @@
+{
+    "chain_3de545c85173": [
+        [
+            "qwen2:0.5b",
+            [
+                "Sokrates didn't have a rubric.\nHe listened first, then asked.\nSo do you.\n```\n\u001fFILE:chains/CGI-1-GRAMMAR.yaml\u001e\nchain_id: CGI-1-GRAMMAR\nname: Context Grammar Extraction\nname_tr: Ba\u011flam Grameri \u00c7\u0131kar\u0131m\u0131",
+                "**D\u00f6n\u00fc\u015ft\u00fcr\u00fcc\u00fc Sinyaller:**\n1. G\u00f6r\u00fcnmez varsay\u0131mlar\u0131 G\u00d6R\u00dcN\u00dcR k\u0131lar\n2. \u00d6z-etiketleri do\u011frudan sorgular\n3. Farkl\u0131 g\u00f6rmeden cevaplanamayacak sorular sorar\n4. Problem i\u00e7in alternatif ontoloji sunar\n5. Otomatik denklemleri ay\u0131r\u0131r (\u00f6r. \"sevgi = itaat\")"
+            ]
+        ]
+    ],
+    "chain_f897d79b577b": [
+        [
+            "qwen:0.5b",
+            [
+                "## 7. Context Management",
+                "## Red Flags When Implementing Validation",
+                "### D --- Dependency Inversion"
+            ]
+        ]
+    ]
+}

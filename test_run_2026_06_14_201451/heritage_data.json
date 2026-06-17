@@ -1,0 +1,39 @@
+{
+    "generations": 0,
+    "version": "1.0",
+    "size": 2,
+    "prompt_chains": {
+        "chain_e67f68226adc": {
+            "parents": [],
+            "fitness": 0.0,
+            "generation": [
+                0
+            ],
+            "metadata": {
+                "prefix_len": 1,
+                "generation": 0,
+                "accuracy": 0.3894352003478601,
+                "time_taken": 41.493491167,
+                "token_usage": 153,
+                "creation_time": "2026-06-14T18:29:34.923154+00:00",
+                "modification_time": "2026-06-14T18:29:34.927264+00:00"
+            }
+        },
+        "chain_a681d4674973": {
+            "parents": [],
+            "fitness": 0.010626055769721724,
+            "generation": [
+                0
+            ],
+            "metadata": {
+                "prefix_len": 1,
+                "generation": 0,
+                "accuracy": 0.010626055769721724,
+                "time_taken": 0.0,
+                "token_usage": 0,
+                "creation_time": "2026-06-14T18:29:34.923318+00:00",
+                "modification_time": "2026-06-14T18:29:34.927264+00:00"
+            }
+        }
+    }
+}

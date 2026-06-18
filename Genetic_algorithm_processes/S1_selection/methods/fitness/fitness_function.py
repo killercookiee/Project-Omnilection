@@ -2,73 +2,80 @@
 Genetic_algorithm_processes/S1_selection/methods/fitness/fitness_function.py
 """
 
-from .accuracy import Accuracy
-from .speed import Speed
-from .token_limit import Token_limit_ratio
+import time
+import math
+from Genetic_algorithm_processes.S1_selection.methods.fitness.accuracy import AccuracyCalculation
 
 class FitnessCalculation:
-    def __init__(self,
-        accuracy_weight: float = 1.0,
-        speed_weight: float = 0.5,
-        token_limit_weight: float = 0.5,
-        accuracy_instance = Accuracy(),
-        token_limit_instance = Token_limit_ratio(),
-        speed_instance = Speed(),
-    ):
-        self.accuracy_weight = accuracy_weight
-        self.speed_weight = speed_weight
-        self.token_limit_weight = token_limit_weight
+    def __init__(self, accuracy_func=None):
+        # We pass the class method so it can be called dynamically
+        self.accuracy_func = accuracy_func if accuracy_func else AccuracyCalculation().evaluate_accuracy
 
-        self.accuracy_instance = accuracy_instance
-        self.token_limit_instance = token_limit_instance
-        self.speed_instance = speed_instance
-    
-    def evaluate_prompt_chain(self, prompt_chain: list[tuple], prompt_output_chain: list[tuple], initial_input: str, solution_output: str) -> tuple[float, dict]:
-        """
-        Returns:
-        - fitness_score (float)
-        - telemetry (dict) containing raw stats for the dashboard
-        """
-        # Accuracy score
-        accuracy_score = self.accuracy_instance.get_accuracy_score(prompt_output_chain[-1][0], initial_input, solution_output)
+    def calculate_time_penalty(self, time_taken: float, optimal_time: float = 2.0, max_time: float = 20.0) -> float:
+        if time_taken <= optimal_time:
+            return 1.0
+        if time_taken >= max_time:
+            return 0.1
+        penalty = math.exp(-0.2 * (time_taken - optimal_time))
+        return max(0.1, penalty)
 
-        # Token limit score & total tokens
-        token_limit_score = 1.0
-        total_tokens = 0
-        for i in range(len(prompt_chain)):
-            model_name = prompt_chain[i][0]
-            prompt_token_used = prompt_output_chain[i][1].get('prompt_eval_count', 0)
-            eval_token_used = prompt_output_chain[i][1].get('eval_count', 0)
-            
-            total_tokens += (prompt_token_used + eval_token_used)
-            token_limit_score *= self.token_limit_instance.get_token_limit_score(prompt_token_used, eval_token_used, model_name)
+    def calculate_length_penalty(self, chain_length: int, optimal_length: int = 2) -> float:
+        if chain_length <= optimal_length:
+            return 1.0
+        penalty = 1.0 - (0.1 * (chain_length - optimal_length))
+        return max(0.3, penalty)
 
-        # Speed score & total time
-        sum_total_duration = sum(step[1].get('total_duration', 0.0) for step in prompt_output_chain)
-        speed_score = self.speed_instance.calculate_speed_score(sum_total_duration)
+    def calculate_token_penalty(self, total_tokens: int, optimal_tokens: int = 150, max_tokens: int = 1500) -> float:
+        if total_tokens <= optimal_tokens:
+            return 1.0
+        if total_tokens >= max_tokens:
+            return 0.2
+        penalty = 1.0 - 0.8 * ((total_tokens - optimal_tokens) / (max_tokens - optimal_tokens))
+        return max(0.2, penalty)
 
-        # Combine scores into fitness
-        fitness_score = (accuracy_score * self.accuracy_weight) * (speed_score ** self.speed_weight) * (token_limit_score ** self.token_limit_weight)
-        
-        # Package the raw data for the dashboard
+    def calculate_final_fitness(self, accuracy: float, time_penalty: float, length_penalty: float, token_penalty: float) -> float:
+        # Heavily weight accuracy: if accuracy is 0, the whole score is 0
+        return accuracy * time_penalty * length_penalty * token_penalty
+
+    def evaluate_prompt_chain(self, chain: list, runner, initial_input: str, solution_output: str) -> tuple[float, dict]:
+        start_time = time.time()
+        prompt_output_chain = runner.run_prompt_chain(chain, initial_input)
+        time_taken = time.time() - start_time
+
+        if not prompt_output_chain or not isinstance(prompt_output_chain[-1], (list, tuple)) or len(prompt_output_chain[-1]) == 0:
+             return 0.0, {"time_taken": time_taken, "accuracy": 0.0, "error": "Malformed output"}
+
+        final_output = str(prompt_output_chain[-1][0])
+
+        # 🚨 THE FIX: Pass the initial_input and runner to the accuracy function!
+        accuracy = self.accuracy_func(solution_output, final_output, initial_input=initial_input, runner=runner)
+
+        chain_length = len(chain)
+        total_tokens_used = 0
+        for step_result in prompt_output_chain:
+            if isinstance(step_result, (list, tuple)) and len(step_result) > 1:
+                metrics = step_result[1]
+                if isinstance(metrics, dict):
+                    # Ollama typically returns prompt_eval_count (input) and eval_count (output)
+                    prompt_tokens = metrics.get("prompt_eval_count", 0)
+                    eval_tokens = metrics.get("eval_count", 0)
+                    total_tokens_used += (prompt_tokens + eval_tokens)
+
+        time_penalty = self.calculate_time_penalty(time_taken)
+        length_penalty = self.calculate_length_penalty(chain_length)
+        token_penalty = self.calculate_token_penalty(total_tokens_used)
+
+        final_fitness = self.calculate_final_fitness(accuracy, time_penalty, length_penalty, token_penalty)
+
         telemetry = {
-            "accuracy": accuracy_score,
-            "time_taken": sum_total_duration,
-            "token_usage": total_tokens
+            "time_taken": time_taken,
+            "accuracy": accuracy,
+            "chain_length": chain_length,
+            "total_tokens_used": total_tokens_used,
+            "time_penalty": time_penalty,
+            "length_penalty": length_penalty,
+            "token_penalty": token_penalty,
+            "final_output": final_output
         }
-        
-        return fitness_score, telemetry
-    
-    def evaluate_population(self, evaluated_chains: list[tuple], initial_input: str, solution_output: str) -> list[tuple[list[tuple], float, dict]]:
-        population_fitness = []
-        
-        for prompt_chain, prompt_output_chain in evaluated_chains:
-            fitness_score, telemetry = self.evaluate_prompt_chain(
-                prompt_chain,
-                prompt_output_chain,
-                initial_input,
-                solution_output
-            )
-            population_fitness.append((prompt_chain, fitness_score, telemetry))
-            
-        return population_fitness
+
+        return final_fitness, telemetry

@@ -170,17 +170,22 @@ class PopulationDataManager:
 
     def update_population_data(self, current_population: list) -> None:
         now = _now_iso()
-        generation = 0
-        if current_population:
-            first_meta = current_population[0][3]
-            if isinstance(first_meta, dict):
-                gen_val = first_meta.get("generation", 0)
-                generation = max(gen_val) if isinstance(gen_val, list) else gen_val
+        
+        # 🚨 FIX: Sweep the entire population to find the true current generation
+        max_generation = 0
+        for entry in current_population:
+            meta = entry[3]
+            if isinstance(meta, dict):
+                gen_val = meta.get("generation", 0)
+                if isinstance(gen_val, list):
+                    gen_val = max(gen_val) if gen_val else 0
+                if gen_val > max_generation:
+                    max_generation = gen_val
 
         self.local_population_data = {
             "population": [tuple(entry) for entry in current_population],
             "metadata": {
-                "generation": generation,
+                "generation": max_generation,
                 "creation_time": now,
                 "modification_time": now,
             },
@@ -188,7 +193,6 @@ class PopulationDataManager:
         with open(self.population_data_file, "w") as f:
             serialisable_population = [list(entry) for entry in self.local_population_data["population"]]
             json.dump({"population": serialisable_population, "metadata": self.local_population_data["metadata"]}, f, indent=4)
-
 
 class IDToPromptChainManager:
     def __init__(self, id_to_promptchain_file: str):

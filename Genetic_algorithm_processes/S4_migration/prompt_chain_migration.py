@@ -9,6 +9,7 @@ class PromptChainMigration:
     def __init__(self, 
                  base_migration_chance: float = 0.2, 
                  migration_method = None,
+                 gdm = None, 
                  verbose: bool = False):
         self.base_migration_chance = base_migration_chance
         self.current_migration_chance = base_migration_chance
@@ -17,42 +18,50 @@ class PromptChainMigration:
         self.base_temperature = self.migration_method.default_temperature
         self.current_temperature = self.base_temperature
         
+        self.gdm = gdm 
         self.verbose = verbose
         
-        # Stagnation tracking
         self.best_fitness_history = []
-        self.stagnation_threshold = 3  # Generations without improvement
+        self.stagnation_threshold = 3 
 
     def adjust_migration_rate(self, current_population: list[tuple]) -> None:
-        """Dynamically adjusts migration parameters based on population stagnation."""
         if not current_population:
             return
             
-        # Extract the highest fitness in the current population
         current_best = max(ind[2] for ind in current_population)
         self.best_fitness_history.append(current_best)
         
-        # Keep history buffer small
         if len(self.best_fitness_history) > 10:
             self.best_fitness_history.pop(0)
 
-        # Check for stagnation
+        # ── Calculate Global Crowdedness ──
+        global_crowdedness = 0.0
+        if self.gdm:
+            lf_sum = sum(self.gdm.lineage_score(ind[0]) for ind in current_population)
+            global_crowdedness = lf_sum / len(current_population)
+
+        # ── Stagnation Check ──
+        is_stagnant = False
         if len(self.best_fitness_history) >= self.stagnation_threshold:
             recent_history = self.best_fitness_history[-self.stagnation_threshold:]
-            improvement = max(recent_history) - min(recent_history)
+            if (max(recent_history) - min(recent_history)) < 0.01:
+                is_stagnant = True
+
+        # Trigger migration bump if Stagnant OR Highly Crowded
+        if is_stagnant or global_crowdedness > 0.6:
+            crowd_boost = max(0.0, global_crowdedness - 0.5) * 0.5 
             
-            if improvement < 0.01:
-                # STAGNATION: Trigger mass migration & higher temperature
-                self.current_migration_chance = min(0.80, self.current_migration_chance + 0.15)
-                self.current_temperature = min(0.90, self.current_temperature + 0.20)
-                if self.verbose:
-                    print(f"  [Migration] ⚠️ Stagnation detected! Increasing chance to {self.current_migration_chance:.0%} and temp to {self.current_temperature:.2f}")
-            else:
-                # IMPROVING: Gradually cool down back to base levels
-                self.current_migration_chance = max(self.base_migration_chance, self.current_migration_chance - 0.05)
-                self.current_temperature = max(self.base_temperature, self.current_temperature - 0.10)
-                if self.verbose and self.current_migration_chance > self.base_migration_chance:
-                    print(f"  [Migration] ✓ Fitness improving. Cooling chance to {self.current_migration_chance:.0%} and temp to {self.current_temperature:.2f}")
+            self.current_migration_chance = min(0.90, self.base_migration_chance + 0.30 + crowd_boost)
+            self.current_temperature = min(0.95, self.base_temperature + 0.30 + crowd_boost)
+            
+            if self.verbose:
+                reason = "Stagnation + Crowdedness" if (is_stagnant and global_crowdedness > 0.6) else ("Crowdedness" if global_crowdedness > 0.6 else "Stagnation")
+                print(f"  [Migration] ⚠️ {reason} detected (Crowd={global_crowdedness:.2f})! Increasing chance to {self.current_migration_chance:.0%} and temp to {self.current_temperature:.2f}")
+        else:
+            self.current_migration_chance = max(self.base_migration_chance, self.current_migration_chance - 0.05)
+            self.current_temperature = max(self.base_temperature, self.current_temperature - 0.10)
+            if self.verbose and self.current_migration_chance > self.base_migration_chance:
+                print(f"  [Migration] ✓ Population healthy. Cooling chance to {self.current_migration_chance:.0%} and temp to {self.current_temperature:.2f}")
 
     def migrate_population(self, offspring_records: list[dict]) -> list[dict]:
         migrated_records = []
@@ -60,7 +69,6 @@ class PromptChainMigration:
         
         for record in offspring_records:
             if random.random() < self.current_migration_chance:
-                # Pass the dynamic temperature to the topology system
                 migrated_chain = self.migration_method.migrate(
                     record["chain"], 
                     temperature=self.current_temperature

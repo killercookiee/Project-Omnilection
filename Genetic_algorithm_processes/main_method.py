@@ -6,6 +6,7 @@ import time
 import hashlib
 import random
 import logging
+import signal
 from datetime import datetime, timezone
 
 # ── Force Hardware Constraints BEFORE loading Ollama ───────────────────────────
@@ -57,12 +58,36 @@ from Genetic_algorithm_processes.ollama_run import PromptChainRunner
 
 # ── Force Hardware Constraints & Suppress Mac Warnings ─────────────────────────
 os.environ["OLLAMA_NUM_THREADS"] = "6"
-os.environ["MallocStackLogging"] = "0"  # <--- Kills the annoying terminal spam
+os.environ["MallocStackLogging"] = "0"
+os.environ["HF_HUB_OFFLINE"] = "1"
+os.environ.pop("MallocStackLogging", None)
+
+# ── Global Interrupt Manager ───────────────────────────────────────────────────
+INTERRUPT_STATE = {
+    "last_press_time": 0.0,
+    "skip_cooldown": False
+}
+
+def handle_sigint(signum, frame):
+    current_time = time.time()
+    
+    # If pressed twice within 10 seconds -> Exit the script completely
+    if current_time - INTERRUPT_STATE["last_press_time"] < 10.0:
+        print("\n\n🛑 Double Ctrl+C detected! Exiting safely...")
+        sys.exit(0)
+        
+    # Otherwise, set the skip flag and warn the user
+    INTERRUPT_STATE["last_press_time"] = current_time
+    INTERRUPT_STATE["skip_cooldown"] = True
+    print("\n\n⚠️  [Interrupt] Press Ctrl+C again within 10 seconds to EXIT.")
+
+# Intercept OS-level Ctrl+C signals
+signal.signal(signal.SIGINT, handle_sigint)
 
 # ── Configuration & Data Management ────────────────────────────────────────────
 
 QUICK_TEST_MODE  = False
-RESUME_FROM_SAVE = False  
+RESUME_FROM_SAVE = True  
 TARGET_SAVE_DIR  = "test_run_2026_06_18_045952"   
 
 population_cap  = 100 if not QUICK_TEST_MODE else 6
@@ -91,7 +116,29 @@ TRAINING_DATASET = [
     {"input": "A train travels at 60 mph for 2 hours, then speeds up to 90 mph for 1.5 hours. What is its average speed for the entire journey in mph? Provide only the number, rounded to the nearest whole number.", "output": "73"},
     
     # Boolean Logic
-    {"input": "Evaluate the following boolean logic statement, assuming A=True, B=False, C=True: (A AND NOT B) OR (B AND C). Provide only True or False.", "output": "True"}
+    {"input": "Evaluate the following boolean logic statement, assuming A=True, B=False, C=True: (A AND NOT B) OR (B AND C). Provide only True or False.", "output": "True"},
+    
+    # Multi-constraint Reasoning
+    {
+        "input": "Write a Python function to calculate the Fibonacci sequence. Requirements: 1) Must use recursion. 2) Must include docstrings. 3) Output ONLY the raw Python code, no markdown code blocks or explanations.",
+        "output": "A valid recursive Python function calculating Fibonacci, containing a docstring, with zero markdown backticks and zero conversational text."
+    },
+    {
+        "input": "A farmer has a rectangular field that is 100 meters long and 50 meters wide. He wants to plant trees every 10 meters along the perimeter. How many trees does he need? Requirements: 1) Think step-by-step. 2) The final sentence must be exactly: 'The total number of trees is X.'",
+        "output": "The AI should calculate the perimeter (300m), divide by 10 (30 trees), provide step-by-step reasoning, and end with the exact specified string 'The total number of trees is 30.'"
+    },
+    {
+        "input": "Summarize the plot of the movie 'The Matrix' in exactly three sentences. Requirements: 1) You must write from the perspective of Agent Smith. 2) You must use the word 'inevitable'.",
+        "output": "A three-sentence summary of The Matrix. Written with a hostile, robotic tone (Agent Smith persona). The word 'inevitable' is present."
+    },
+    {
+        "input": "Convert the following JSON object into an XML string: {\"user\": {\"id\": 42, \"name\": \"Alice\", \"roles\": [\"admin\", \"editor\"]}}. Requirements: 1) The roles must be nested as individual <role> tags inside a <roles> parent block. 2) Output nothing but the XML.",
+        "output": "Properly nested XML representing the JSON data. <roles><role>admin</role><role>editor</role></roles>. No pleasantries or markdown blocks."
+    },
+    {
+        "input": "Solve this logic puzzle: There are 3 boxes. Box A says 'Gold is here'. Box B says 'Gold is not here'. Box C says 'Gold is not in Box A'. Only one box is telling the truth. Which box has the gold? Requirements: 1) Briefly explain the logical deduction. 2) Conclude with a JSON object: {\"gold_location\": \"Box X\"}",
+        "output": "Logical deduction showing that if A is true, C is false, but if B is false gold is in B... wait, the logic leads to Gold being in Box B. The output must end with {\"gold_location\": \"Box B\"}."
+    }
 ]
 
 
@@ -163,8 +210,8 @@ def evaluate_population_with_cache(population_records: list[dict], generation_nu
             sys.stdout.write(f"\r    ⏳ Progress: [{i}/{total}] | Running: {chain_id}...")
             sys.stdout.flush()
             
-            prompt_output_chain = runner.run_prompt_chain(chain, initial_input)
-            fitness, telemetry = fitness_algorithm.evaluate_prompt_chain(chain, prompt_output_chain, initial_input, solution_output)
+            # 🚨 FIX: Pass 'runner' correctly and DO NOT double-run the chain!
+            fitness, telemetry = fitness_algorithm.evaluate_prompt_chain(chain, runner, initial_input, solution_output)
             
             metadata.update(telemetry) 
             metadata["creation_time"] = datetime.now(timezone.utc).isoformat()
@@ -182,12 +229,10 @@ def evaluate_population_with_cache(population_records: list[dict], generation_nu
                     
             chain_str = " -> ".join(safe_chain_parts)
             
-            if prompt_output_chain and isinstance(prompt_output_chain[-1], (list, tuple)) and len(prompt_output_chain[-1]) > 0:
-                final_output = str(prompt_output_chain[-1][0])
-            else:
-                final_output = "Error: Malformed Output"
-                
+            # 🚨 FIX: Safely pull the output from telemetry for logging
+            final_output = telemetry.get("final_output", "Error: Malformed Output")
             log_out = final_output.replace('\n', ' ')[:80] + ('...' if len(final_output) > 80 else '')
+            
             final_records.append((chain_id, chain, fitness, metadata))
             
             logger.info(f"  [Scored] {chain_id} | Fit: {fitness:.4f} | Time: {telemetry.get('time_taken', 0.0):.2f}s")
@@ -230,7 +275,7 @@ recombination_algorithm = PromptChainRecombination(
 )
 
 mutation_algorithm = PromptChainMutation(
-    base_mutation_chance=0.05, 
+    base_mutation_chance=0.1, 
     gdm=gdm,
     verbose=False,
     mutation_methods=[
@@ -240,7 +285,7 @@ mutation_algorithm = PromptChainMutation(
     ]
 )
 
-migration_algorithm = PromptChainMigration(migration_chance=0.05) 
+migration_algorithm = PromptChainMigration(base_migration_chance=0.20,gdm=gdm, verbose=False) 
 
 sa_algorithm = SimulatedAnnealing(
     evaluator_func=evaluate_population_with_cache,
@@ -261,18 +306,25 @@ start_generation = 0
 saved_pop_data = gdm.population_data_manager.local_population_data
 
 if RESUME_FROM_SAVE and saved_pop_data and saved_pop_data.get("population"):
-    print(f"\n💾 Resuming execution at Generation {saved_pop_data.get('metadata', {}).get('generation', 0) + 1}.")
     saved_pop = saved_pop_data["population"]
-    saved_meta = saved_pop_data.get("metadata", {})
     
+    max_gen = 0
     for entry in saved_pop:
         chain_id = entry[0]
         chain_tuples = [tuple(step) for step in entry[1]]
         fitness = entry[2]
         metadata = entry[3]
         current_population_records.append((chain_id, chain_tuples, fitness, metadata))
-    
-    start_generation = saved_meta.get("generation", 0) + 1
+        
+        # 🚨 FIX: Dynamically find the highest generation among all survivors
+        gen_val = metadata.get("generation", 0)
+        if isinstance(gen_val, list):
+            gen_val = max(gen_val) if gen_val else 0
+        if gen_val > max_gen:
+            max_gen = gen_val
+            
+    start_generation = max_gen + 1
+    print(f"\n💾 Resuming execution safely at Generation {start_generation}.")
 
 # ── THE FIX: HERITAGE RECONSTRUCTION ──
 elif RESUME_FROM_SAVE and gdm.heritage_data_manager.local_heritage_database.get("prompt_chains"):
@@ -373,20 +425,30 @@ try:
 
         gen_elapsed = time.time() - gen_start_time
         print(f"✅ Generation {gen} Complete in {gen_elapsed:.1f}s")
+
+        gen += 1
         
-        # 5. Cooldown & Memory Wipe
-        print("\n❄️  Cooling down for 3 minutes to clear VRAM... (Press Ctrl+C to save & exit)")
-        for model in available_models:
-            runner.unload_model(model)
-            
-        # Display a 3-minute sleep progress bar
-        for remaining in range(180, 0, -1):
-            sys.stdout.write(f"\r    Cooldown remaining: {remaining}s ")
+        # ── Interruptible Cooldown Timer ──
+        cooldown_seconds = 180
+        INTERRUPT_STATE["skip_cooldown"] = False # Reset flag for the new generation
+        
+        print(f"\n❄️  Cooling down for {cooldown_seconds//60} minutes to clear VRAM...")
+        
+        for remaining in range(cooldown_seconds, 0, -1):
+            # Check the global flag every second
+            if INTERRUPT_STATE["skip_cooldown"]:
+                print("\n    ⏭️  Cooldown skipped by user! Initiating next generation...")
+                break
+                
+            sys.stdout.write(f"\r    ⏳ Resuming in {remaining} seconds... ")
             sys.stdout.flush()
             time.sleep(1)
-        sys.stdout.write("\r    Cooldown complete!            \n")
+            
+        # If we finished the loop naturally without skipping
+        if not INTERRUPT_STATE["skip_cooldown"]:
+            sys.stdout.write("\r    ✅ Cooldown complete!                      \n")
+            sys.stdout.flush()
         
-        gen += 1
 
 except KeyboardInterrupt:
     print("\n\n[!] KeyboardInterrupt detected (Ctrl+C).")

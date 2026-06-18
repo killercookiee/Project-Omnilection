@@ -198,7 +198,7 @@ class ModelBasedTopology:
                 new_model = self.select_migration_target(current_model, temperature)
                 
                 # Replace model name, keep rest of the tuple
-                new_tuple = (new_model,) + prompt_tuple[1:]
+                new_tuple = tuple([new_model] + list(prompt_tuple[1:]))
                 new_prompt_chain.append(new_tuple)
                 
                 print(f"  Step {i}: {current_model} → {new_model}")

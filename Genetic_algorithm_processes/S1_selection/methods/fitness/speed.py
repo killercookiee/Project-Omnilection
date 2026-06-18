@@ -6,10 +6,10 @@ import time
 
 class Speed:
     def __init__(self,
-                 time_limit: float = 60.0,     # Increased to 60s for local LLMs
-                 sharpness: float = 0.75,
-                 inflection_point: float = 0.8,
-                 min_score: float = 0.2,       # Floor to prevent instant death
+                 time_limit: float = 90.0,     # Hard cap raised to 90s for local LLMs
+                 sharpness: float = 0.5,
+                 inflection_point: float = 0.55,  # Keeps 30-45s in the lenient zone
+                 min_score: float = 0.25,      # Floor to prevent instant death
                  verbose: bool = False):
         self.speed_limit = time_limit
         self.sharpness = max(0.0, min(1.0, sharpness))

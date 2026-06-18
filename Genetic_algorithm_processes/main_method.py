@@ -42,6 +42,7 @@ from Genetic_algorithm_processes.S2_recombination.prompt_chain_recombination imp
 
 from Genetic_algorithm_processes.S3_mutation.methods.delete_mutation import DeleteMutation
 from Genetic_algorithm_processes.S3_mutation.methods.semantic_llm_mutation import SemanticLLMMutation
+from Genetic_algorithm_processes.S3_mutation.methods.gene_pool_mutation import GenePoolSearchMutation
 from Genetic_algorithm_processes.S3_mutation.prompt_chain_mutation import PromptChainMutation
 
 from Genetic_algorithm_processes.S4_migration.prompt_chain_migration import PromptChainMigration
@@ -205,6 +206,13 @@ def evaluate_population_with_cache(population_records: list[dict], generation_nu
     
     return final_records
 
+# ── Load Gene Pool Early for Mutators ──────────────────────────────────────────
+gene_pool_manager = GenePoolManager()
+segments = gene_pool_manager.load_prompt_segments()
+if not segments:
+    gene_pool_manager.run_pipeline()
+    segments = gene_pool_manager.load_prompt_segments()
+
 # ── GA operator instances (Silenced for UI) ────────────────────────────────────
 
 fitness_algorithm = FitnessCalculation()
@@ -222,16 +230,17 @@ recombination_algorithm = PromptChainRecombination(
 )
 
 mutation_algorithm = PromptChainMutation(
-    base_mutation_chance=0.20, 
+    base_mutation_chance=0.05, 
     gdm=gdm,
     verbose=False,
     mutation_methods=[
         SemanticLLMMutation(runner=runner, mutator_model="qwen2.5-coder:0.5b", verbose=False).mutate,
         DeleteMutation(min_segment_fraction=0.1, max_segment_fraction=0.3).mutate,
+        GenePoolSearchMutation(segments=segments, verbose=False).mutate 
     ]
 )
 
-migration_algorithm = PromptChainMigration(migration_chance=0.0) 
+migration_algorithm = PromptChainMigration(migration_chance=0.05) 
 
 sa_algorithm = SimulatedAnnealing(
     evaluator_func=evaluate_population_with_cache,
@@ -338,7 +347,12 @@ try:
         # 1. Operators
         selected_records = selection_algorithm.select_prompt_chains(current_population_records)
         offspring_dicts = recombination_algorithm.recombine_prompt_chains(selected_records)
+        
+        # Adjust dynamic rates based on parent performance
         mutation_algorithm.adjust_mutation_rate(current_population_records)
+        migration_algorithm.adjust_migration_rate(current_population_records)
+        
+        # Apply operators
         offspring_dicts = mutation_algorithm.mutate_population(offspring_dicts)
         offspring_dicts = migration_algorithm.migrate_population(offspring_dicts)
 

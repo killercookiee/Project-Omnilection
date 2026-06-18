@@ -11,7 +11,6 @@ class SemanticLLMMutation:
         self.mutator_model = mutator_model
         self.verbose = verbose
         
-        # The distinct evolutionary paths we want to force the prompt to take
         self.modes = [
             "EXPAND: Make this prompt highly detailed, explicit, and comprehensive.",
             "SUMMARIZE: Condense this prompt to be extremely concise and direct.",
@@ -19,22 +18,33 @@ class SemanticLLMMutation:
             "TRANSLATE-THINKING: Rewrite the prompt by translating its core logic to another language and back, resulting in a unique phrasing."
         ]
 
-    def mutate(self, chain: list[tuple]) -> list[tuple]:
-        if not chain:
+    def mutate(self, chain: list) -> list:
+        # ── Genetic Armor: Ensure chain is actually a list ──
+        if not chain or not isinstance(chain, list):
             return chain
 
-        # 1. Pick a random step in the chain, and a random text segment in that step
+        # 1. Pick a random step in the chain
         step_idx = random.randint(0, len(chain) - 1)
-        model_name, segments = chain[step_idx]
+        step = chain[step_idx]
         
-        if not segments:
+        # ── Genetic Armor: Protect against malformed tuples ──
+        if not isinstance(step, (list, tuple)) or len(step) < 2:
+            return chain
+            
+        model_name = step[0]
+        segments = step[1]
+        
+        # ── Genetic Armor: Ensure segments is a list of strings ──
+        if isinstance(segments, str):
+            segments = [segments]
+        elif not isinstance(segments, list) or len(segments) == 0:
             return chain
 
         seg_idx = random.randint(0, len(segments) - 1)
-        target_segment = segments[seg_idx]
+        target_segment = str(segments[seg_idx])
 
         if len(target_segment.strip()) < 5:
-            return chain # Too short to meaningfully mutate (likely just a space or punctuation)
+            return chain 
 
         # 2. Pick a semantic mutation mode
         mode = random.choice(self.modes)
@@ -54,13 +64,12 @@ class SemanticLLMMutation:
             print(f"  [SemanticMutation] Prompting {self.mutator_model} to {mode.split(':')[0]}...")
 
         # 4. Execute the LLM call to mutate the text
-        output, metrics = self.runner.run_ollama_model(self.mutator_model, mutator_prompt)
+        output, _ = self.runner.run_ollama_model(self.mutator_model, mutator_prompt)
         
-        # Clean the output of any stray quotes the LLM might have added
         mutated_text = output.strip().strip('"').strip("'")
         
         # Fallback: If the mutator failed or returned empty, return original
-        if not mutated_text or len(mutated_text) < 2:
+        if not mutated_text or len(mutated_text) < 2 or mutated_text == target_segment:
             return chain
 
         # 5. Reconstruct the chain with the new genetic material

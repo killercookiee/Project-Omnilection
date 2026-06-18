@@ -1,21 +1,23 @@
-"""
-Genetic_algorithm_processes/main_method.py
-"""
+# Main loop for genetic algorithm processes
 
 import os
 import sys
+import time
 import hashlib
+import random
 import logging
 from datetime import datetime, timezone
+
+# ── Force Hardware Constraints BEFORE loading Ollama ───────────────────────────
+os.environ["OLLAMA_NUM_THREADS"] = "6"
 
 def _find_local_folder(folder_name: str = "Project-Omnilection") -> str:
     current_dir = os.path.abspath(os.path.dirname(__file__))
     while current_dir and current_dir != '/':
-        # Anchor check: we are looking folder called Project-Omnilection
         if os.path.basename(current_dir) == folder_name:
             return current_dir
         current_dir = os.path.dirname(current_dir)
-    raise FileNotFoundError("Could not find the project root (missing Dataset_Prompts folder).")
+    raise FileNotFoundError("Could not find the project root.")
 
 def _set_directory():
     target_folder = _find_local_folder()
@@ -23,18 +25,14 @@ def _set_directory():
         os.chdir(target_folder)
     if target_folder not in sys.path:
         sys.path.insert(0, target_folder)
-    print(f"Changed directory to: {target_folder}")
 
 _set_directory()
 
-# ── Data management ────────────────────────────────────────────────────────────
+# ── Data management & Pipeline Imports ─────────────────────────────────────────
 from Data.general_datamanager import GeneralDataManager
-
-# ── Dataset / population seeding ───────────────────────────────────────────────
 from Dataset_Prompts.gene_pool_manager import GenePoolManager
 from Dataset_Prompts.initial_population_generator import InitialPopulationGenerator
 
-# ── GA pipeline ────────────────────────────────────────────────────────────────
 from Genetic_algorithm_processes.S1_selection.methods.fitness.fitness_function import FitnessCalculation
 from Genetic_algorithm_processes.S1_selection.methods.selection.stochastic_universal_sampling import StochasticUniversalSampling
 from Genetic_algorithm_processes.S1_selection.prompt_chain_selection import PromptChainSelection
@@ -44,51 +42,62 @@ from Genetic_algorithm_processes.S2_recombination.methods.crossover.lineage_cros
 from Genetic_algorithm_processes.S2_recombination.methods.crossover.model_based_crossover import ModelBasedCrossover
 from Genetic_algorithm_processes.S2_recombination.prompt_chain_recombination import PromptChainRecombination
 
-from Genetic_algorithm_processes.S3_mutation.methods.synonym_mutation import SynonymMutation
-from Genetic_algorithm_processes.S3_mutation.methods.shuffle_mutation import ShuffleMutation
 from Genetic_algorithm_processes.S3_mutation.methods.delete_mutation import DeleteMutation
 from Genetic_algorithm_processes.S3_mutation.methods.semantic_llm_mutation import SemanticLLMMutation
 from Genetic_algorithm_processes.S3_mutation.prompt_chain_mutation import PromptChainMutation
 
 from Genetic_algorithm_processes.S4_migration.prompt_chain_migration import PromptChainMigration
 
+from Genetic_algorithm_processes.S5_simulated_annealing.simulated_annealing import SimulatedAnnealing
+from Genetic_algorithm_processes.S5_simulated_annealing.methods.micro_mutation import MicroMutation
+
 from Genetic_algorithm_processes.S6_replacement.methods.replacement.lineage_replacement import LineageReplacement
 from Genetic_algorithm_processes.S6_replacement.prompt_chain_replacement import PromptChainReplacement
 
 from Genetic_algorithm_processes.ollama_run import PromptChainRunner
 
+# ── Force Hardware Constraints & Suppress Mac Warnings ─────────────────────────
+os.environ["OLLAMA_NUM_THREADS"] = "6"
+os.environ["MallocStackLogging"] = "0"  # <--- Kills the annoying terminal spam
 
 # ── Configuration & Data Management ────────────────────────────────────────────
 
-QUICK_TEST_MODE  = True   
+QUICK_TEST_MODE  = False
 RESUME_FROM_SAVE = False  
-TARGET_SAVE_DIR  = None   
+TARGET_SAVE_DIR  = "test_run_2026_06_18_045952"   
 
-GENERATIONS = 2 if QUICK_TEST_MODE else 10
-population_cap  = 6 if QUICK_TEST_MODE else 100
-initial_input   = "What is the capital of France?"
-solution_output = "Paris"
+population_cap  = 100 if not QUICK_TEST_MODE else 6
+
+# ── Logical Reasoning Training Dataset ─────────────────────────────────────────
+TRAINING_DATASET = [
+    {"input": "If a farmer has 17 sheep and all but 9 die, how many are left? Provide only the number.", "output": "9"},
+    {"input": "A bat and a ball cost $1.10 in total. The bat costs $1.00 more than the ball. How much does the ball cost in cents? Provide only the number.", "output": "5"},
+    {"input": "If it takes 5 machines 5 minutes to make 5 widgets, how many minutes would it take 100 machines to make 100 widgets? Provide only the number.", "output": "5"},
+    {"input": "There are three apples in a basket and you take away two. How many apples do you have now? Provide only the number.", "output": "2"},
+    {"input": "What is the next number in the sequence: 2, 4, 8, 16, 32, ...? Provide only the number.", "output": "64"},
+    {"input": "A boy has as many sisters as brothers, but each sister has only half as many sisters as brothers. How many brothers and sisters are there in the family? Provide only the total number of children.", "output": "7"},
+    {"input": "If you multiply this number by any other number, the answer will always be the same. What is the number?", "output": "0"}
+]
+
 
 gdm = GeneralDataManager(run_dir=TARGET_SAVE_DIR, resume_from_save=RESUME_FROM_SAVE)
 
-# ── Logging Setup ──────────────────────────────────────────────────────────────
+# ── Logging Setup (Clean UI) ───────────────────────────────────────────────────
 log_file_path = os.path.join(gdm.run_dir, "pipeline.log")
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[
-        logging.FileHandler(log_file_path),
-        logging.StreamHandler()
-    ]
+    handlers=[logging.FileHandler(log_file_path)] # Only write verbose to file, keep console clean
 )
 logger = logging.getLogger(__name__)
 logger.info(f"Initialized Run Directory: {gdm.run_dir}")
-if QUICK_TEST_MODE:
-    logger.warning("QUICK TEST MODE ENABLED: Population capped and Generations minimized.")
 
+print(f"\n📁 Run Directory: {gdm.run_dir}")
+print(f"⚙️  Ollama Threads Limited to: {os.environ['OLLAMA_NUM_THREADS']}")
 
 runner = PromptChainRunner(verbose=False)
 runner.update_model_registry(benchmark=False)
+available_models = list(runner.model_registry.keys())
 
 def get_chain_id(chain: list) -> str:
     return f"chain_{hashlib.md5(str(chain).encode('utf-8')).hexdigest()[:12]}"
@@ -96,12 +105,17 @@ def get_chain_id(chain: list) -> str:
 
 # ── Core Execution & Evaluation Logic ──────────────────────────────────────────
 
-def evaluate_population_with_cache(population_records: list[dict], generation_num: int) -> list[tuple]:
+def evaluate_population_with_cache(population_records: list[dict], generation_num: int, task: dict) -> list[tuple]:
     evaluated_data = []
     final_records = []
     
-    heritage_db = gdm.heritage_data_manager.local_heritage_database.get("prompt_chains", {})
+    initial_input = task["input"]
+    solution_output = task["output"]
+    task_id = hashlib.md5(initial_input.encode('utf-8')).hexdigest()[:8]
     
+    heritage_db = gdm.heritage_data_manager.local_heritage_database.get("prompt_chains", {})
+    to_execute = []
+
     for record in population_records:
         chain_id = record["chain_id"]
         chain = record["chain"]
@@ -111,52 +125,73 @@ def evaluate_population_with_cache(population_records: list[dict], generation_nu
 
         heritage_record = heritage_db.get(chain_id, {})
         cached_fitness = heritage_record.get("fitness")
+        cached_task = heritage_record.get("metadata", {}).get("task_id")
         
-        has_been_evaluated = cached_fitness is not None
-
-        if has_been_evaluated:
+        if cached_fitness is not None and cached_task == task_id:
             existing_meta = heritage_record.get("metadata", {})
             existing_meta["generation"] = generation_num
             final_records.append((chain_id, chain, cached_fitness, existing_meta))
+            logger.info(f"  [Cache Hit] {chain_id}")
             
-            logger.info(f"  [Cache Hit] {chain_id} | Cached Fitness: {cached_fitness:.4f}")
-            gdm.sync_population([(chain_id, chain, cached_fitness, existing_meta)])
+            # 🚨 FIX: Update heritage history only, do NOT overwrite the population file!
+            gdm.id_to_promptchain_manager.add_or_update(chain_id, chain)
+            gdm.heritage_data_manager.update_population([(chain_id, chain, cached_fitness, existing_meta)])
         else:
-            prompt_output_chain = runner.run_prompt_chain(chain, initial_input)
-            evaluated_data.append((chain_id, chain, prompt_output_chain, parents, metadata))
+            to_execute.append((chain_id, chain, parents, metadata))
 
-    if evaluated_data:
-        logger.info(f"  [Execution] Evaluating fitness for {len(evaluated_data)} new chains...")
-        chains_and_outputs = [(item[1], item[2]) for item in evaluated_data]
-        new_evaluations = fitness_algorithm.evaluate_population(chains_and_outputs, initial_input, solution_output)
+    total = len(to_execute)
+    if total > 0:
+        print(f"    Evaluating {total} novel chains for this task...")
+        start_time = time.time()
         
-        for i, (chain, fitness, telemetry) in enumerate(new_evaluations):
-            chain_id = evaluated_data[i][0]
-            prompt_output_chain = evaluated_data[i][2]
-            parents = evaluated_data[i][3]
-            metadata = evaluated_data[i][4]
+        for i, (chain_id, chain, parents, metadata) in enumerate(to_execute):
+            sys.stdout.write(f"\r    ⏳ Progress: [{i}/{total}] | Running: {chain_id}...")
+            sys.stdout.flush()
+            
+            prompt_output_chain = runner.run_prompt_chain(chain, initial_input)
+            fitness, telemetry = fitness_algorithm.evaluate_prompt_chain(chain, prompt_output_chain, initial_input, solution_output)
             
             metadata.update(telemetry) 
             metadata["creation_time"] = datetime.now(timezone.utc).isoformat()
+            metadata["task_id"] = task_id  
             
-            # Format the prompt chain into a readable string
-            chain_str = " -> ".join([f"[{step[0]}: '{''.join(step[1])}']" for step in chain])
+            safe_chain_parts = []
+            for step in chain:
+                if isinstance(step, (list, tuple)) and len(step) >= 2:
+                    segs = step[1] if isinstance(step[1], list) else [str(step[1])]
+                    safe_chain_parts.append(f"[{step[0]}: '{''.join(segs)}']")
+                elif isinstance(step, (list, tuple)) and len(step) == 1:
+                    safe_chain_parts.append(f"[{step[0]}: '']")
+                else:
+                    safe_chain_parts.append(f"[Malformed Mutant]")
+                    
+            chain_str = " -> ".join(safe_chain_parts)
             
-            # Extract output for logging
-            final_output = prompt_output_chain[-1][0]
-            log_out = final_output.replace('\n', ' ')[:100] + ('...' if len(final_output) > 100 else '')
+            if prompt_output_chain and isinstance(prompt_output_chain[-1], (list, tuple)) and len(prompt_output_chain[-1]) > 0:
+                final_output = str(prompt_output_chain[-1][0])
+            else:
+                final_output = "Error: Malformed Output"
+                
+            log_out = final_output.replace('\n', ' ')[:80] + ('...' if len(final_output) > 80 else '')
+            final_records.append((chain_id, chain, fitness, metadata))
             
-            logger.info(f"\n  [Scored] {chain_id} | Fitness: {fitness:.4f} | Time: {telemetry.get('time_taken', 0.0):.2f}s")
+            logger.info(f"  [Scored] {chain_id} | Fit: {fitness:.4f} | Time: {telemetry.get('time_taken', 0.0):.2f}s")
             logger.info(f"           Chain:    {chain_str[:120]}{'...' if len(chain_str) > 120 else ''}")
             logger.info(f"           Expected: '{solution_output}'")
             logger.info(f"           Output:   '{log_out}'")
             
-            final_records.append((chain_id, chain, fitness, metadata))
+        elapsed = time.time() - start_time
+        sys.stdout.write(f"\r    ✅ Progress: [{total}/{total}] | Completed in {elapsed:.1f}s                 \n")
+        sys.stdout.flush()
             
-    gdm.sync_population(final_records)
+    # 🚨 FIX: Update heritage history only, do NOT overwrite the population file!
+    for rec in final_records:
+        gdm.id_to_promptchain_manager.add_or_update(rec[0], rec[1])
+    gdm.heritage_data_manager.update_population(final_records)
+    
     return final_records
 
-# ── GA operator instances ──────────────────────────────────────────────────────
+# ── GA operator instances (Silenced for UI) ────────────────────────────────────
 
 fitness_algorithm = FitnessCalculation()
 
@@ -184,6 +219,12 @@ mutation_algorithm = PromptChainMutation(
 
 migration_algorithm = PromptChainMigration(migration_chance=0.0) 
 
+sa_algorithm = SimulatedAnnealing(
+    evaluator_func=evaluate_population_with_cache,
+    micro_mutator=MicroMutation(runner=runner, mutator_model="qwen2.5-coder:0.5b", verbose=False),
+    gdm=gdm, steps=3, initial_temp=10.0, elite_selection_ratio=0.2, verbose=False
+)
+
 replacement_algorithm = PromptChainReplacement(
     replacement_algorithm=LineageReplacement(population_cap=population_cap, verbose=False),
     gdm=gdm 
@@ -197,7 +238,7 @@ start_generation = 0
 saved_pop_data = gdm.population_data_manager.local_population_data
 
 if RESUME_FROM_SAVE and saved_pop_data and saved_pop_data.get("population"):
-    logger.info(f"💾 Found saved population data in {gdm.run_dir}. Resuming...")
+    print(f"\n💾 Resuming execution at Generation {saved_pop_data.get('metadata', {}).get('generation', 0) + 1}.")
     saved_pop = saved_pop_data["population"]
     saved_meta = saved_pop_data.get("metadata", {})
     
@@ -209,16 +250,44 @@ if RESUME_FROM_SAVE and saved_pop_data and saved_pop_data.get("population"):
         current_population_records.append((chain_id, chain_tuples, fitness, metadata))
     
     start_generation = saved_meta.get("generation", 0) + 1
-    logger.info(f"🚀 Resuming execution at Generation {start_generation}.")
+
+# ── THE FIX: HERITAGE RECONSTRUCTION ──
+elif RESUME_FROM_SAVE and gdm.heritage_data_manager.local_heritage_database.get("prompt_chains"):
+    print(f"\n🩹 Active population missing. Reconstructing from Heritage Database...")
+    heritage_db = gdm.heritage_data_manager.local_heritage_database.get("prompt_chains", {})
+    
+    # 1. Find the highest generation achieved
+    max_gen = 0
+    for chain_id, data in heritage_db.items():
+        gens = data.get("generation", [])
+        if gens and max(gens) > max_gen:
+            max_gen = max(gens)
+            
+    # 2. Resurrect all individuals from that generation
+    for chain_id, data in heritage_db.items():
+        if max_gen in data.get("generation", []):
+            chain = gdm.id_to_promptchain_manager.get_promptchain_from_id(chain_id)
+            if chain:
+                chain_tuples = [tuple(step) for step in chain]
+                fitness = data.get("fitness")
+                metadata = data.get("metadata", {})
+                current_population_records.append((chain_id, chain_tuples, fitness, metadata))
+                
+    start_generation = max_gen + 1
+    print(f"🚀 Reconstructed {len(current_population_records)} individuals from Gen {max_gen}!")
+    print(f"🚀 Resuming execution at Generation {start_generation}.")
+    
+    # Save it back to the active population file to fix the state
+    gdm.sync_population(current_population_records)
+
 else:
-    logger.info("🌱 Generating initial population...")
+    print("\n🌱 Generating initial population...")
     gene_pool_manager = GenePoolManager()
     segments = gene_pool_manager.load_prompt_segments()
     if not segments:
         gene_pool_manager.run_pipeline()
         segments = gene_pool_manager.load_prompt_segments()
 
-    available_models: list[str] = list(runner.model_registry.keys())
     initial_pop_generator = InitialPopulationGenerator(
         segments=segments, available_models=available_models, population_cap=population_cap,
         min_chain_length=1, max_chain_length=1 
@@ -230,58 +299,70 @@ else:
         chain_id = get_chain_id(chain)
         metadata = {"prefix_len": 1, "recombination_mode": "initial"}
         gdm.register_intermediary_chain(chain_id, chain, [], metadata)
-        initial_dicts.append({
-            "chain_id": chain_id,
-            "chain": chain,
-            "parents": [],  
-            "metadata": metadata
-        })
+        initial_dicts.append({"chain_id": chain_id, "chain": chain, "parents": [], "metadata": metadata})
         
-    logger.info("🧬 Evaluating Initial Population (Generation 0)...")
-    current_population_records = evaluate_population_with_cache(initial_dicts, generation_num=0)
+    print("\n🧬 Evaluating Initial Population (Generation 0)...")
+    init_task = random.choice(TRAINING_DATASET)
+    print(f"    Task: {init_task['input']}")
+    current_population_records = evaluate_population_with_cache(initial_dicts, generation_num=0, task=init_task)
     start_generation = 1
 
 
 # ── GA main loop ───────────────────────────────────────────────────────────────
 
-for gen in range(start_generation, GENERATIONS):
-    logger.info(f"\n\n{'='*60}\n=== GENERATION {gen} ===\n{'='*60}")
-
-    selected_records = selection_algorithm.select_prompt_chains(current_population_records)
-    
-    offspring_dicts = recombination_algorithm.recombine_prompt_chains(selected_records)
-    
-    mutation_algorithm.adjust_mutation_rate(current_population_records)
-    offspring_dicts = mutation_algorithm.mutate_population(offspring_dicts)
-    
-    offspring_dicts = migration_algorithm.migrate_population(offspring_dicts)
-
-    logger.info(f"\n--- Evaluating Generation {gen} Offspring ---")
-    evaluated_offspring_records = evaluate_population_with_cache(offspring_dicts, generation_num=gen)
-
-    current_population_records = replacement_algorithm.replace_population(
-        current_population_records, evaluated_offspring_records
-    )
-
-    # ── Log Generation Survivor Summary ──
-    logger.info(f"\n🏆 Generation {gen} Survivors Leaderboard 🏆")
-    for rank, rec in enumerate(current_population_records):
-        chain_id = rec[0]
-        chain = rec[1]
-        fitness = rec[2]
-        metadata = rec[3]
+try:
+    gen = start_generation
+    while True: # Indefinite Training Loop
+        print(f"\n{'='*60}\n=== GENERATION {gen} ===\n{'='*60}")
+        gen_start_time = time.time()
         
-        # Replacement syncs the DB, so lineage is fresh
-        lf_score = gdm.lineage_score(chain_id)
+        # 0. Assign Task
+        current_task = random.choice(TRAINING_DATASET)
+        print(f"🎯 Current Task: {current_task['input']}")
+        print(f"👥 Population Size: {len(current_population_records)}")
+
+        # 1. Operators
+        selected_records = selection_algorithm.select_prompt_chains(current_population_records)
+        offspring_dicts = recombination_algorithm.recombine_prompt_chains(selected_records)
+        mutation_algorithm.adjust_mutation_rate(current_population_records)
+        offspring_dicts = mutation_algorithm.mutate_population(offspring_dicts)
+        offspring_dicts = migration_algorithm.migrate_population(offspring_dicts)
+
+        # 2. Evaluate
+        print(f"\n🧪 Evaluating Offspring...")
+        evaluated_offspring = evaluate_population_with_cache(offspring_dicts, generation_num=gen, task=current_task)
+
+        # 3. Simulated Annealing
+        print(f"🔬 Annealing Elites...")
+        evaluated_offspring = sa_algorithm.process_population(evaluated_offspring, generation_num=gen, task=current_task)
+
+        # 4. Replacement
+        current_population_records = replacement_algorithm.replace_population(
+            current_population_records, evaluated_offspring
+        )
+
+        gdm.sync_population(current_population_records)
+
+        gen_elapsed = time.time() - gen_start_time
+        print(f"✅ Generation {gen} Complete in {gen_elapsed:.1f}s")
         
-        origin = metadata.get("recombination_mode", "initial")
-        if metadata.get("mutated"):
-            origin += f" -> mutated ({metadata.get('mutation_method', 'unknown')})"
+        # 5. Cooldown & Memory Wipe
+        print("\n❄️  Cooling down for 3 minutes to clear VRAM... (Press Ctrl+C to save & exit)")
+        for model in available_models:
+            runner.unload_model(model)
             
-        chain_preview = str(chain).replace('\n', ' ')[:60] + "..."
+        # Display a 3-minute sleep progress bar
+        for remaining in range(180, 0, -1):
+            sys.stdout.write(f"\r    Cooldown remaining: {remaining}s ")
+            sys.stdout.flush()
+            time.sleep(1)
+        sys.stdout.write("\r    Cooldown complete!            \n")
         
-        logger.info(f"  #{rank+1} | {chain_id}")
-        logger.info(f"       Fit: {fitness:.4f} | Lin: {lf_score:.4f} | Origin: {origin}")
-        logger.info(f"       Chain: {chain_preview}")
+        gen += 1
 
-logger.info("\n\n========== EVOLUTION COMPLETE ==========")
+except KeyboardInterrupt:
+    print("\n\n[!] KeyboardInterrupt detected (Ctrl+C).")
+    print("[!] Saving the last stable generation state to database...")
+    gdm.sync_population(current_population_records)
+    print(f"[!] Saved successfully to {gdm.run_dir}. Exiting.")
+    sys.exit(0)

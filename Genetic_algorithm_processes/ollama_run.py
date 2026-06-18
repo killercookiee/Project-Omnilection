@@ -635,48 +635,42 @@ class PromptChainRunner:
     
     def run_prompt_chain(
         self, 
-        prompt_chain: List[Tuple[str, List[str]]], 
+        prompt_chain: List[Any], 
         initial_input: str,
     ) -> List[Tuple[str, Dict[str, Any]]]:
-        """
-        Run a chain of prompts through different models sequentially.
         
-        Args:
-            prompt_chain: List of (model_name, [prompt_segment_1, prompt_segment_2, ...]) tuples
-            initial_input: The initial input to start the chain
-            verbose: Whether to print progress information
-            timeout: Maximum time in seconds to wait for each model run
-
-        Returns:
-            List of tuples containing (output, runtime_metrics) for each step.
-
-            runtime_metrics keys (all per-step, not accumulated):
-                - total_duration (float): Total wall-clock time in seconds
-                - load_duration (float): Model load time in seconds
-                - prompt_eval_count (int): Number of prompt tokens
-                - prompt_eval_duration (float): Prompt evaluation time in seconds
-                - prompt_eval_rate (float): Prompt tokens/s
-                - eval_count (int): Number of generated tokens
-                - eval_duration (float): Generation time in seconds
-                - eval_rate (float): Generated tokens/s
-        """
-        # Evaluate prompt chain validity
+        empty_metrics = {
+            "total_duration": 0.0, "load_duration": 0.0,
+            "prompt_eval_count": 0, "prompt_eval_duration": 0.0, "prompt_eval_rate": 0.0,
+            "eval_count": 0, "eval_duration": 0.0, "eval_rate": 0.0,
+        }
+        
+        # Evaluate prompt chain validity safely
         is_valid, missing_models = self.validate_prompt_chain(prompt_chain)
         if not is_valid:
-            raise ValueError(f"Invalid prompt chain. Missing models: {', '.join(missing_models)}")
+            if self.verbose:
+                print(f"Warning: Malformed chain or missing models: {', '.join(missing_models)}")
+            # Return empty metrics so fitness algorithm assigns it a 0.0
+            return [("Error: Malformed Genetic Material", empty_metrics)]
         
         results: List[Tuple[str, Dict[str, Any]]] = []
         current_context = initial_input
-        if self.verbose:
-            print(f"\n\n=== Running prompt chain with {len(prompt_chain)} steps... ===")
         
         for step_idx, step in enumerate(prompt_chain):
-            # Extract model name and prompt segments
-            model_name = step[0]
-            prompt_segments = step[1]
+            # Robust unpacking against genetic corruption
+            if not isinstance(step, (list, tuple)) or len(step) == 0:
+                continue
+                
+            model_name = str(step[0])
+            prompt_segments = step[1] if len(step) > 1 else []
             
-            # Combine prompt segments into a single prompt
-            prompt_text = "".join(prompt_segments)
+            # Ensure prompt_segments is a list of strings
+            if isinstance(prompt_segments, str):
+                prompt_segments = [prompt_segments]
+            elif not isinstance(prompt_segments, list):
+                prompt_segments = [str(prompt_segments)]
+            
+            prompt_text = "".join(str(s) for s in prompt_segments)
             
             # Add context from previous step
             if step_idx == 0:
@@ -684,28 +678,12 @@ class PromptChainRunner:
             else:
                 full_prompt = f"{prompt_text}\n\nPrevious output: {current_context}"
             
-            if self.verbose:
-                print(f"\n--- Step {step_idx + 1} ---")
-                print(f"Model: {model_name}")
-                print(f"Prompt preview: {full_prompt[:100]}...")
-            
             # Run the model
             output, metrics = self.run_ollama_model(model_name, full_prompt)
-            
-            # Store result
             results.append((output, metrics))
-            
-            # Update context for next iteration
             current_context = output
             
-            if self.verbose:
-                print(f"Total duration:   {metrics['total_duration']:.3f}s")
-                print(f"Load duration:    {metrics['load_duration']:.3f}s")
-                print(f"Prompt tokens:    {metrics['prompt_eval_count']}  ({metrics['prompt_eval_rate']:.2f} tok/s)")
-                print(f"Generated tokens: {metrics['eval_count']}  ({metrics['eval_rate']:.2f} tok/s)")
-                print(f"Output preview:   {output[:100]}...")
-        
-        return results
+        return results if results else [("Error: Empty Chain", empty_metrics)]
     
     def get_available_models(self) -> List[str]:
         """
@@ -728,20 +706,21 @@ class PromptChainRunner:
         """
         return self.model_registry.get(model_name)
     
-    def validate_prompt_chain(self, prompt_chain: List[Tuple[str, List[str]]]) -> Tuple[bool, List[str]]:
+    def validate_prompt_chain(self, prompt_chain: List[Any]) -> Tuple[bool, List[str]]:
         """
-        Validate that all models in a prompt chain are available.
-        
-        Args:
-            prompt_chain: List of (model_name, [prompt_segment_1, prompt_segment_2, ...]) tuples
-            
-        Returns:
-            Tuple of (is_valid, list_of_missing_models)
+        Validate that all models in a prompt chain are available, and the chain is not malformed.
         """
         missing_models = []
         
+        # If a mutator completely destroyed the list structure
+        if not isinstance(prompt_chain, list):
+            return False, ["MALFORMED_CHAIN_NOT_LIST"]
+        
         for step in prompt_chain:
-            model_name = step[0]
+            # If a mutator destroyed the tuple structure
+            if not isinstance(step, (list, tuple)) or len(step) == 0:
+                continue
+            model_name = str(step[0])
             if model_name not in self.model_registry:
                 missing_models.append(model_name)
         

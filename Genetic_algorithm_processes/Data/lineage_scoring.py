@@ -212,7 +212,7 @@ class LineageScorer:
                 members.append({
                     "id":         cid,
                     "chain":      chain,
-                    "fitness":    float(record.get("fitness", 0.0)),
+                    "fitness":    float(record.get("fitness") if record.get("fitness") is not None else 0.0),
                     "prefix_len": base_len,
                 })
         return members
@@ -318,7 +318,7 @@ class LineageScorer:
         if not chains:
             return {}
 
-        all_fitnesses = [float(r.get("fitness", 0.0)) for r in chains.values()]
+        all_fitnesses = [float(r.get("fitness") if r.get("fitness") is not None else 0.0) for r in chains.values()]
 
         if self.verbose:
             print(f"[LineageScorer] Scoring {len(chains)} unique prefix sequences")

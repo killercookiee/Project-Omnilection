@@ -126,10 +126,10 @@
         ],
         "system_prompt": null,
         "model_parameters": {
-            "repeat_penalty": 1,
             "temperature": 0.6,
             "top_k": 20,
-            "top_p": 0.95
+            "top_p": 0.95,
+            "repeat_penalty": 1
         },
         "license": "Apache License Version 2.0, January 2004",
         "benchmark": {

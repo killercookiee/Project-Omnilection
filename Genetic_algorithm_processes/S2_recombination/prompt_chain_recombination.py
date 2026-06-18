@@ -26,9 +26,9 @@ class PromptChainRecombination:
         if not self.gdm:
             raise ValueError("[PromptChainRecombination] GeneralDataManager (gdm) is required.")
 
-        # Map chain string back to ID so we don't lose parent IDs
+        self.gdm.refresh_lineage_scores()
+
         chain_to_id = {str(rec[1]): rec[0] for rec in selected_records}
-        
         selected_chains = [rec[1] for rec in selected_records]
         pop_with_lineage = self.gdm.get_population_with_lineage(selected_chains)
 
@@ -36,7 +36,8 @@ class PromptChainRecombination:
         paired_prompt_chains = self.prompt_chain_pairing_instance.pair(pop_with_lineage)
 
         offspring_records = []
-        for (p1_chain, p2_chain, hint) in paired_prompt_chains:
+        # 🚨 FIX: Now unpacking 4 elements including the 'mode' string
+        for (p1_chain, p2_chain, hint, mode) in paired_prompt_chains:
             
             p1_id = chain_to_id.get(str(p1_chain))
             p2_id = chain_to_id.get(str(p2_chain))
@@ -47,13 +48,10 @@ class PromptChainRecombination:
             
             offspring_id = get_chain_id(offspring_recombined)
             
-            # ── Determine and Tag Recombination Mode ──
-            mode = "exploitation" if hint is None else "exploration"
-            
             metadata = {
                 "prefix_len": hint if hint is not None else 1,
                 "recombined": True,
-                "recombination_mode": mode
+                "recombination_mode": mode # 🚨 EXACT mode passed cleanly!
             }
 
             self.gdm.register_intermediary_chain(offspring_id, offspring_recombined, parents, metadata)
@@ -66,4 +64,3 @@ class PromptChainRecombination:
             })
             
         return offspring_records
-    

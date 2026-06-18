@@ -9,8 +9,6 @@ import logging
 from datetime import datetime, timezone
 
 # ── Force Hardware Constraints BEFORE loading Ollama ───────────────────────────
-os.environ["OLLAMA_NUM_THREADS"] = "6"
-
 def _find_local_folder(folder_name: str = "Project-Omnilection") -> str:
     current_dir = os.path.abspath(os.path.dirname(__file__))
     while current_dir and current_dir != '/':
@@ -70,13 +68,29 @@ population_cap  = 100 if not QUICK_TEST_MODE else 6
 
 # ── Logical Reasoning Training Dataset ─────────────────────────────────────────
 TRAINING_DATASET = [
-    {"input": "If a farmer has 17 sheep and all but 9 die, how many are left? Provide only the number.", "output": "9"},
-    {"input": "A bat and a ball cost $1.10 in total. The bat costs $1.00 more than the ball. How much does the ball cost in cents? Provide only the number.", "output": "5"},
-    {"input": "If it takes 5 machines 5 minutes to make 5 widgets, how many minutes would it take 100 machines to make 100 widgets? Provide only the number.", "output": "5"},
-    {"input": "There are three apples in a basket and you take away two. How many apples do you have now? Provide only the number.", "output": "2"},
-    {"input": "What is the next number in the sequence: 2, 4, 8, 16, 32, ...? Provide only the number.", "output": "64"},
-    {"input": "A boy has as many sisters as brothers, but each sister has only half as many sisters as brothers. How many brothers and sisters are there in the family? Provide only the total number of children.", "output": "7"},
-    {"input": "If you multiply this number by any other number, the answer will always be the same. What is the number?", "output": "0"}
+    # Algebra / Composition
+    {"input": "If f(x) = 3x^2 - 2x + 1, what is the value of f(f(2))? Provide only the number.", "output": "226"},
+    
+    # Spatial Reasoning
+    {"input": "A solid 3x3x3 wooden cube is painted red on all its outside faces. It is then cut into 27 smaller 1x1x1 cubes. How many of these smaller cubes have exactly two red faces? Provide only the number.", "output": "12"},
+    
+    # Combinatorics
+    {"input": "How many unique 4-letter permutations can be made from the letters in the word 'BOOK'? Provide only the number.", "output": "12"},
+    
+    # Multi-variable Word Problem
+    {"input": "Alice is twice as old as Bob. In 5 years, the sum of their ages will be 46. How old is Bob right now? Provide only the number.", "output": "12"},
+    
+    # Algorithmic Logic / Cryptography
+    {"input": "In a Caesar cipher shifted forward by 3 letters (where A becomes D), how do you write the word 'SYSTEM'? Provide only the 6-letter capitalized word.", "output": "VBVWHP"},
+    
+    # Data Structures
+    {"input": "A binary tree has a root node with value 10. Its left child is 5 and its right child is 15. The left child of 5 is 2. The right child of 15 is 20. What is the sum of all leaf nodes in this tree? Provide only the number.", "output": "22"},
+    
+    # Physics / Kinematics
+    {"input": "A train travels at 60 mph for 2 hours, then speeds up to 90 mph for 1.5 hours. What is its average speed for the entire journey in mph? Provide only the number, rounded to the nearest whole number.", "output": "73"},
+    
+    # Boolean Logic
+    {"input": "Evaluate the following boolean logic statement, assuming A=True, B=False, C=True: (A AND NOT B) OR (B AND C). Provide only True or False.", "output": "True"}
 ]
 
 

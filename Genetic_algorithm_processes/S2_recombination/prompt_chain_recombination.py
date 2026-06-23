@@ -1,44 +1,66 @@
-from Genetic_algorithm_processes.S1_selection.prompt_chain_selection import PromptChainSelection
-from Genetic_algorithm_processes.S2_recombination.methods.pairing.random_pairing import RandomPairing
-from Genetic_algorithm_processes.S2_recombination.methods.crossover.N_crossover_multiparent import NCrossoverMultiparent
-from Genetic_algorithm_processes.S2_recombination.methods.crossover.total_parent_crossover import TotalParentCrossover
+"""
+Genetic_algorithm_processes/S2_recombination/prompt_chain_recombination.py
+"""
+import hashlib
+from Genetic_algorithm_processes.S2_recombination.methods.pairing.lineage_pairing import LineagePairing
+from Genetic_algorithm_processes.S2_recombination.methods.crossover.lineage_crossover import LineageCrossover
+from Genetic_algorithm_processes.S2_recombination.methods.crossover.model_based_crossover import ModelBasedCrossover
+from Genetic_algorithm_processes.Data.general_datamanager import GeneralDataManager
 
+def get_chain_id(chain: list) -> str:
+    return f"chain_{hashlib.md5(str(chain).encode('utf-8')).hexdigest()[:12]}"
 
 class PromptChainRecombination:
-    def __init__(self, run_prompt_chain_function, prompt_chain_selection_instance=PromptChainSelection(),
-                 prompt_chain_pairing_instance=RandomPairing(size_of_pairs=2, number_of_pairs=2),
-                 prompt_chain_crossover_instance=NCrossoverMultiparent(crossover_num=2), prompt_crossover_instance=TotalParentCrossover()):
-        self.run_prompt_chain_function = run_prompt_chain_function
-        self.prompt_chain_selection_instance = prompt_chain_selection_instance
+    def __init__(self,
+        prompt_chain_pairing_instance = LineagePairing(),
+        prompt_chain_crossover_instance = LineageCrossover(),
+        prompt_crossover_instance = ModelBasedCrossover(),
+        gdm: GeneralDataManager = None
+    ):
         self.prompt_chain_pairing_instance = prompt_chain_pairing_instance
         self.prompt_chain_crossover_instance = prompt_chain_crossover_instance
         self.prompt_crossover_instance = prompt_crossover_instance
+        self.gdm = gdm
 
+    def recombine_prompt_chains(self, selected_records: list[tuple]) -> list[dict]:
+        if not self.gdm:
+            raise ValueError("[PromptChainRecombination] GeneralDataManager (gdm) is required.")
 
-    def recombine_prompt_chains(self, prompt_chain_population):
-        selected_prompt_chains = self.prompt_chain_selection_instance.select_prompt_chain(prompt_chain_population, self.run_prompt_chain_function)
-        paired_prompt_chains = self.prompt_chain_pairing_instance.random_pairing(selected_prompt_chains)
+        self.gdm.refresh_lineage_scores()
 
-        offsprings = []
-        for parents in paired_prompt_chains:
-            offspring = self.prompt_chain_crossover_instance.crossover(parents)
+        chain_to_id = {str(rec[1]): rec[0] for rec in selected_records}
+        selected_chains = [rec[1] for rec in selected_records]
+        pop_with_lineage = self.gdm.get_population_with_lineage(selected_chains)
 
-            offspring_recombined = self.prompt_crossover_instance.crossover(parents, offspring)
-            offsprings.append(offspring_recombined)
-        return offsprings
+        self.prompt_chain_pairing_instance.number_of_pairs = len(selected_records)
+        paired_prompt_chains = self.prompt_chain_pairing_instance.pair(pop_with_lineage)
 
+        offspring_records = []
+        # 🚨 FIX: Now unpacking 4 elements including the 'mode' string
+        for (p1_chain, p2_chain, hint, mode) in paired_prompt_chains:
+            
+            p1_id = chain_to_id.get(str(p1_chain))
+            p2_id = chain_to_id.get(str(p2_chain))
+            parents = [p1_id, p2_id] if p1_id and p2_id else []
 
-if __name__ == "__main__":
-    prompt_chain_population = [
-        [("gpt-3.5-turbo", "This is an ", "input prompt"), ("gpt-4", "This ", "another ", "input ", "prompt")],
-        [("gpt-4", "Different input prompt here"), ("gpt-3.5-turbo", "", "Yet another prompt input")],
-        [("gpt-3.5-turbo", "Sample prompt one"), ("gpt-4", "Sample prompt two"), ("gpt-3.5-turbo", "Sample prompt three")],
-        [("gpt-4", "First prompt segment"), ("gpt-4", "Second prompt segment")],
-        [("gpt-3.5-turbo", "Only one prompt in this chain")]
-    ]    
-    def run_prompt_chain(prompt_chain):
-        # Output: [(prompt_output, time_taken), ...]
-        return [("The capital of France is Paris.", 2.5), ("The capital of Germany is Berlin.", 3.0)]
-    prompt_chain_recombination = PromptChainRecombination(run_prompt_chain)
-    prompt_chain_offsprings = prompt_chain_recombination.recombine_prompt_chains(prompt_chain_population)
-    print(f"Prompt Chain Offsprings: {prompt_chain_offsprings}")
+            offspring_chain = self.prompt_chain_crossover_instance.crossover(p1_chain, p2_chain, hint)
+            offspring_recombined = self.prompt_crossover_instance.crossover([p1_chain, p2_chain], offspring_chain)
+            
+            offspring_id = get_chain_id(offspring_recombined)
+            
+            metadata = {
+                "prefix_len": hint if hint is not None else 1,
+                "recombined": True,
+                "recombination_mode": mode # 🚨 EXACT mode passed cleanly!
+            }
+
+            self.gdm.register_intermediary_chain(offspring_id, offspring_recombined, parents, metadata)
+            
+            offspring_records.append({
+                "chain_id": offspring_id,
+                "chain": offspring_recombined,
+                "parents": parents,
+                "metadata": metadata
+            })
+            
+        return offspring_records

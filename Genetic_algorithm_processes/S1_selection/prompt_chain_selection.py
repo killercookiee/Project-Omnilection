@@ -1,48 +1,37 @@
-# Input a population of individuals (prompt chains) as a list
-# Output a list of selected individuals based on prompt chain selection
+"""
+Genetic_algorithm_processes/S1_selection/prompt_chain_selection.py
+"""
 
-from Genetic_algorithm_processes.S1_selection.methods.fitness.fitness_function import FitnessFunction
 from Genetic_algorithm_processes.S1_selection.methods.selection.stochastic_universal_sampling import StochasticUniversalSampling
+
 class PromptChainSelection:
     def __init__(self,
-                 selection_algorithm=StochasticUniversalSampling(selection_ratio=0.5) ,
-                 fitness_function=FitnessFunction(accuracy_weight=1.0, speed_weight=1.0, token_limit_weight=1.0)):        
+        selection_algorithm=StochasticUniversalSampling(),
+        verbose: bool = False
+    ):
         self.selection_algorithm = selection_algorithm
-        self.fitness_function = fitness_function
+        self.verbose = verbose
 
-        self.population_scores = {}
-    
-    def select_prompt_chain(self, population, run_prompt_chain_function):
-        # Fitness calculation
-        for prompt_chain in population:
-            prompt_output_chain = run_prompt_chain_function(prompt_chain)
-            total_elapsed_time = sum([time_taken for _, time_taken in prompt_output_chain])
-            final_output = prompt_output_chain[-1][0]
-            fitness_score = self.fitness_function.get_fitness_score(prompt_chain, final_output, total_elapsed_time)
-            self.population_scores[tuple(map(tuple, prompt_chain))] = fitness_score
+        if self.verbose:
+            print(f"[PromptChainSelection] Initialized — algorithm: {type(self.selection_algorithm).__name__}")
 
-        # Selection
-        selected = self.selection_algorithm.stochastic_universal_sampling(self.population_scores)
-        return selected
+    def select_prompt_chains(self, population_records: list[tuple]) -> list[tuple]:
+        """
+        Accepts evaluated population records: [(chain_id, chain, fitness, metadata), ...]
+        Returns a selected subset of the full records.
+        """
+        if self.verbose:
+            print(f"\n[PromptChainSelection] Running {type(self.selection_algorithm).__name__} on {len(population_records)} individuals...")
 
-if __name__ == "__main__":
-    prompt_chain_population = [
-        [("gpt-3.5-turbo", "This is an ", "input prompt"), 
-         ("gpt-4", "This ", "another ", "input ", "prompt")],
-        [("gpt-4", "Different input prompt here"), 
-         ("gpt-3.5-turbo", "", "Yet another prompt input")]
-    ]
-    
-    def run_prompt_chain(prompt_chain):
-        # Simulate different outputs based on the prompt chain
-        # In real implementation, this would actually run the prompts
-        if len(prompt_chain) == 2 and prompt_chain[0][0] == "gpt-3.5-turbo":
-            return [("The capital of France is Paris.", 2.5), 
-                    ("The capital of Germany is Berlin.", 3.0)]
-        else:
-            return [("Different output here.", 1.5), 
-                    ("Another different output.", 2.0)]
+        # Map to the format (record, fitness) for the selection algorithm.
+        # We add a microscopic epsilon (1e-9) to prevent division-by-zero crashes 
+        # in the rare event that the ENTIRE population completely fails (fitness = 0.0).
+        population_fitness = [(rec, max(rec[2], 1e-9)) for rec in population_records]
+        
+        # Selection algorithm returns the selected records
+        selected_records = self.selection_algorithm.select(population_fitness)
 
-    prompt_chain_selection = PromptChainSelection()
-    selected = prompt_chain_selection.select_prompt_chain(prompt_chain_population, run_prompt_chain)
-    print(f"Selected Prompt Chains: {selected}")
+        if self.verbose:
+            print(f"  ✅  Selected {len(selected_records)} / {len(population_records)} chains")
+
+        return selected_records

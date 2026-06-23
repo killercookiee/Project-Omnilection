@@ -1,3 +1,7 @@
+"""
+Genetic_algorithm_processes/S2_recombination/methods/pairing/_index_pairing.py
+"""
+
 # Input a list of prompt_chains (d-dimensional list), 
 # Output a list of index d-dimensional list representing each row with d-dimension, meaning successful pairing
 
@@ -6,7 +10,7 @@ class IndexPairing:
     def __init__(self, stationary_indices=None):
         self.stationary_indices = stationary_indices if stationary_indices is not None else [0]
 
-    def index_pairing(self,data):
+    def pair(self,data):
         """
         Create index pairings for a d-dimensional list.
         

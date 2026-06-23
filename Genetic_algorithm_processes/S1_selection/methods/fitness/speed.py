@@ -1,43 +1,60 @@
-# Input time taken (float) for example in seconds
-# Output a normalized speed score between 0 and 1
-# The function is a smoothstep function between (0, 1) and (speed_limit, 0)
-
-# Customizable parameters:
-# speed limit: maximum time taken for score to be non zero (float)          | default is 10 seconds
+"""
+Genetic_algorithm_processes/S1_selection/methods/fitness/speed.py
+"""
 
 import time
+
 class Speed:
-    def __init__(self, speed_limit=10.0):
-        self.speed_limit = speed_limit
+    def __init__(self,
+                 time_limit: float = 90.0,     # Hard cap raised to 90s for local LLMs
+                 sharpness: float = 0.5,
+                 inflection_point: float = 0.55,  # Keeps 30-45s in the lenient zone
+                 min_score: float = 0.25,      # Floor to prevent instant death
+                 verbose: bool = False):
+        self.speed_limit = time_limit
+        self.sharpness = max(0.0, min(1.0, sharpness))
+        self.inflection_point = max(0.01, min(0.99, inflection_point))
+        self.min_score = max(0.0, min(1.0, min_score))
+        self.verbose = verbose
 
-    def calculate_speed_score(self, input_time):
-        """
-        Speed function to normalize time taken into a score between 0 and 1.
-        
-        Parameters:
-        - input_time: The time taken (float)
-        - speed_limit: Maximum time for non-zero score (float)
-        
-        Returns:
-        - speed_score: The normalized speed score (float)
-        """
-        if input_time >= self.speed_limit:
-            return 0.0
+        if self.verbose:
+            print(f"[Speed] Initialized — limit: {self.speed_limit}s | floor: {self.min_score}")
+
+    def _curve(self, x: float) -> float:
+        if x < self.inflection_point:
+            x_warped = 0.5 * (x / self.inflection_point)
         else:
-            # Smoothstep function
+            x_warped = 0.5 + 0.5 * ((x - self.inflection_point) / (1.0 - self.inflection_point))
+
+        order = 1 + round(self.sharpness * 4)  
+        smoothstep = self._smoothstep(x_warped, order)
+        linear = x_warped
+
+        return linear + self.sharpness * (smoothstep - linear)
+
+    def _smoothstep(self, x: float, order: int) -> float:
+        for _ in range(order):
+            x = x * x * (3 - 2 * x)
+        return x
+
+    def calculate_speed_score(self, input_time: float) -> float:
+        if input_time >= self.speed_limit:
+            score = self.min_score
+        elif input_time <= 0.0:
+            score = 1.0
+        else:
             x = input_time / self.speed_limit
-            return 1 - (3 * x**2 - 2 * x**3)  # Smoothstep formula
-    
+            base_score = 1.0 - self._curve(x)
+            # Squeeze the score between min_score and 1.0
+            score = self.min_score + base_score * (1.0 - self.min_score)
 
-if __name__ == "__main__":
-    speed_instance = Speed(speed_limit=10.0)
+        if self.verbose:
+            status = "✅" if score >= 0.75 else "⚠️" if score > self.min_score else "❌"
+            bar = "█" * int(score * 20) + "░" * (20 - int(score * 20))
+            print(f"\n{'─'*40}")
+            print(f"  {status}  Speed evaluation")
+            print(f"      Time   : {input_time:.3f}s / {self.speed_limit}s limit")
+            print(f"      Score  : {score:.3f}  [{bar}]")
+            print(f"{'─'*40}\n")
 
-    # Simulate timing a process
-    start_time = time.time()
-    time.sleep(3)  # Simulate a process taking 3 seconds
-    end_time = time.time()
-    elapsed_time = end_time - start_time
-
-    speed_score = speed_instance.calculate_speed_score(elapsed_time)
-    print(f"Elapsed Time: {elapsed_time} seconds")
-    print(f"Speed Score: {speed_score}")
+        return score

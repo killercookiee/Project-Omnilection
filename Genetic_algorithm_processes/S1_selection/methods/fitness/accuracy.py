@@ -1,53 +1,88 @@
-# Input a accuracy score (percentage between 0 and 100)
-# Output a normalized accuracy score between 0 and 1
-# The function is a exponential scaling function from (0,0) to (100, 1)
+"""
+Genetic_algorithm_processes/S1_selection/methods/fitness/accuracy.py
+"""
 
-# Customizable parameters:
-# scaling factor: controls the steepness of the curve (float)               | default is 0.05
+import re
+import json
 
+class AccuracyCalculation:
+    def __init__(self, use_llm_judge: bool = True, judge_model: str = "qwen2.5-coder:0.5b", verbose: bool = False):
+        self.use_llm_judge = use_llm_judge
+        self.judge_model = judge_model
+        self.verbose = verbose
 
-class Accuracy:
-    def __init__(self, scaling_factor=0.05, testing_model = None):
-        self.scaling_factor = scaling_factor
-        self.testing_model = testing_model
-
-    def get_accuracy(self, prompt_output, testing_model=None): # Place holder for actual accuracy computation
-        """Receives prompt output and testing_model to compute accuracy score percentage between 0 and 100."""
-        # Placeholder implementation - in practice, this would compare prompt_output to a reference answer
-        # prompt_accuracy = self.testing_model.evaluate(prompt_output)
-        prompt_accuracy = 100
-        return prompt_accuracy
-    
-    def normalize_accuracy_score(self, accuracy_value=None):
+    def evaluate_accuracy(self, expected: str, actual: str, initial_input: str = None, runner = None) -> float:
         """
-        Accuracy function to normalize accuracy scores between 0 and 1 using a function
-        
-        Parameters:
-        - input_score: The accuracy score (float between 0 and 100)
-        - scaling_factor: Controls the steepness of the curve (float)
-        
-        Returns:
-        - normalized_score: The normalized accuracy score (float)
+        Routes the evaluation to either the LLM Judge (for partial credit) 
+        or the Deterministic fallback based on initialization.
         """
-        if accuracy_value is None:
-            accuracy_value = self.prompt_accuracy
-        if accuracy_value < 0:
-            return 0.0
-        elif accuracy_value > 100:
-            return 1.0
+        if self.use_llm_judge and runner and initial_input:
+            return self._llm_judge_accuracy(expected, actual, initial_input, runner)
         else:
-            import math
-            normalized_score = 1 - math.exp(-self.scaling_factor * accuracy_value)
-            return normalized_score
-        
-    def get_accuracy_score(self, prompt_output):
-        accuracy_value = self.get_accuracy(prompt_output)
-        accuracy_score = self.normalize_accuracy_score(accuracy_value)
-        return accuracy_score
-        
-if __name__ == "__main__":
-    accuracy_instance = Accuracy(scaling_factor=0.05)
+            return self._deterministic_accuracy(expected, actual)
 
-    prompt_output = "The capital of France is Paris."
-    accuracy_score = accuracy_instance.get_accuracy_score(prompt_output)
-    print(f"Computed Accuracy Score for '{prompt_output}': {accuracy_score}")
+    def _llm_judge_accuracy(self, expected: str, actual: str, initial_input: str, runner) -> float:
+        judge_prompt = (
+            f"You are an impartial grader evaluating an AI's response to a complex prompt.\n"
+            f"Task Given to AI: \"\"\"{initial_input}\"\"\"\n"
+            f"Expected Ideal Output / Requirements: \"\"\"{expected}\"\"\"\n"
+            f"Actual AI Output: \"\"\"{actual}\"\"\"\n\n"
+            f"Score the AI's output from 0.0 to 1.0 based on this rubric:\n"
+            f"- 0.0: Completely wrong, off-topic, or empty.\n"
+            f"- 0.3: Addressed the topic but failed major constraints or logic.\n"
+            f"- 0.6: Good logic or partial answer, but missed a constraint (e.g., formatting).\n"
+            f"- 0.8: Mostly correct, minor hallucination or slightly verbose.\n"
+            f"- 1.0: Perfect. Followed all constraints and logic flawlessly.\n\n"
+            f"CRITICAL: Output ONLY the float number (e.g., 0.6). Do not output any text, explanations, or formatting."
+        )
+        
+        try:
+            judge_response, _ = runner.run_ollama_model(self.judge_model, judge_prompt)
+            # Strip out any markdown or conversational text the judge might accidentally output
+            clean_score = ''.join(c for c in judge_response if c.isdigit() or c == '.')
+            
+            # Handle edge cases where multiple decimals are generated (e.g., "0.6.")
+            if clean_score.count('.') > 1:
+                clean_score = clean_score[:clean_score.find('.', clean_score.find('.') + 1)]
+                
+            accuracy_score = float(clean_score) if clean_score else 0.0
+            return max(0.0, min(1.0, accuracy_score))
+        except Exception as e:
+            if self.verbose:
+                print(f"  [Judge Error] Failed to parse score: {e}")
+            return 0.0
+
+    def _deterministic_accuracy(self, expected: str, actual: str) -> float:
+        """Original exact-match and regex fallback logic."""
+        expected_str = str(expected).strip().lower()
+        actual_str = str(actual).strip().lower()
+
+        if expected_str == actual_str:
+            return 1.0
+        if expected_str in actual_str:
+            return 1.0
+
+        expected_numbers = self._extract_numbers(expected_str)
+        actual_numbers = self._extract_numbers(actual_str)
+        if expected_numbers and expected_numbers == actual_numbers:
+            return 1.0
+
+        expected_json = self._extract_json(expected_str)
+        actual_json = self._extract_json(actual_str)
+        if expected_json and expected_json == actual_json:
+            return 1.0
+
+        return 0.0
+
+    def _extract_numbers(self, text: str) -> list[float]:
+        numbers = re.findall(r'-?\d+\.?\d*', text)
+        return [float(n) for n in numbers]
+
+    def _extract_json(self, text: str) -> dict | None:
+        try:
+            match = re.search(r'\{.*\}', text, re.DOTALL)
+            if match:
+                return json.loads(match.group(0))
+        except json.JSONDecodeError:
+            pass
+        return None

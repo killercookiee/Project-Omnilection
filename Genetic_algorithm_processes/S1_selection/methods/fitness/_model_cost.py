@@ -1,4 +1,8 @@
-# Input model cost (float) in terms of money
+"""
+Genetic_algorithm_processes/S1_selection/methods/fitness/_model_cost.py
+"""
+
+# Input model cost (float) in terms of money and compute resources (e.g. latency, energy consumption, ram usage, etc.)
 # Output a normalized cost score between 0 and 1
 # The function is an inverse exponential scaling from (0, cost_punishment) to (infinity, 0), function is 1 at cost 0 to encourage free models
 

@@ -1,0 +1,344 @@
+{
+    "gemma3:latest": {
+        "model_id": "a2af6cc3eb7f",
+        "size": "3.3",
+        "cost_per_1k_tokens": 0.0,
+        "architecture": "gemma3",
+        "parameters": "4.3B",
+        "parameters_count": 4300000000.0,
+        "context_length": 131072,
+        "embedding_length": "2560",
+        "quantization": "Q4_K_M",
+        "capabilities": [
+            "completion",
+            "vision"
+        ],
+        "stop_tokens": [
+            "<end_of_turn>"
+        ],
+        "system_prompt": null,
+        "model_parameters": {
+            "top_p": 0.95,
+            "temperature": 1,
+            "top_k": 64
+        },
+        "license": "Gemma Terms of Use Last modified: February 21, 2024"
+    },
+    "nomic-embed-text:latest": {
+        "model_id": "0a109f422b47",
+        "size": "274",
+        "cost_per_1k_tokens": 0.0,
+        "architecture": "nomic-bert",
+        "parameters": "137M",
+        "parameters_count": 137000000.0,
+        "context_length": 2048,
+        "embedding_length": "768",
+        "quantization": "F16",
+        "capabilities": [
+            "embedding"
+        ],
+        "stop_tokens": [],
+        "system_prompt": null,
+        "model_parameters": {
+            "num_ctx": 8192
+        },
+        "license": "Apache License Version 2.0, January 2004"
+    },
+    "codellama:latest": {
+        "model_id": "8fdf8f752f6e",
+        "size": "3.8",
+        "cost_per_1k_tokens": 0.0,
+        "architecture": "llama",
+        "parameters": "7B",
+        "parameters_count": 7000000000.0,
+        "context_length": 16384,
+        "embedding_length": "4096",
+        "quantization": "Q4_0",
+        "capabilities": [
+            "completion"
+        ],
+        "stop_tokens": [
+            "[INST]",
+            "[/INST]",
+            "<<SYS>>",
+            "<</SYS>>"
+        ],
+        "system_prompt": null,
+        "model_parameters": {
+            "rope_frequency_base": "1e+06"
+        },
+        "license": "LLAMA 2 COMMUNITY LICENSE AGREEMENT Llama 2 Version Release Date: July 18, 2023",
+        "benchmark": {
+            "cold_load_duration": 0.0,
+            "warm_load_duration": 0.0,
+            "total_duration": 0.0,
+            "load_duration": 0.0,
+            "prompt_eval_count": 0,
+            "prompt_eval_duration": 0.0,
+            "prompt_eval_rate": 0.0,
+            "eval_count": 0,
+            "eval_duration": 0.0,
+            "eval_rate": 0.0
+        }
+    },
+    "qwen2.5-coder:latest": {
+        "model_id": "dae161e27b0e",
+        "size": "4.7",
+        "cost_per_1k_tokens": 0.0,
+        "architecture": "qwen2",
+        "parameters": "7.6B",
+        "parameters_count": 7600000000.0,
+        "context_length": 32768,
+        "embedding_length": "3584",
+        "quantization": "Q4_K_M",
+        "capabilities": [
+            "completion",
+            "tools",
+            "insert"
+        ],
+        "stop_tokens": [],
+        "system_prompt": "You are Qwen, created by Alibaba Cloud. You are a helpful assistant.",
+        "model_parameters": {},
+        "license": "Apache License Version 2.0, January 2004"
+    },
+    "qwen3:0.6b": {
+        "model_id": "7df6b6e09427",
+        "size": "522",
+        "cost_per_1k_tokens": 0.0,
+        "architecture": "qwen3",
+        "parameters": "751.63M",
+        "parameters_count": 751630000.0,
+        "context_length": 40960,
+        "embedding_length": "1024",
+        "quantization": "Q4_K_M",
+        "capabilities": [
+            "completion",
+            "tools",
+            "thinking"
+        ],
+        "stop_tokens": [
+            "<|im_start|>",
+            "<|im_end|>"
+        ],
+        "system_prompt": null,
+        "model_parameters": {
+            "temperature": 0.6,
+            "top_k": 20,
+            "top_p": 0.95,
+            "repeat_penalty": 1
+        },
+        "license": "Apache License Version 2.0, January 2004"
+    },
+    "gemma3:270m": {
+        "model_id": "e7d36fb2c3b3",
+        "size": "291",
+        "cost_per_1k_tokens": 0.0,
+        "architecture": "gemma3",
+        "parameters": "268.10M",
+        "parameters_count": 268100000.00000003,
+        "context_length": 32768,
+        "embedding_length": "640",
+        "quantization": "Q8_0",
+        "capabilities": [
+            "completion"
+        ],
+        "stop_tokens": [
+            "<end_of_turn>"
+        ],
+        "system_prompt": null,
+        "model_parameters": {
+            "top_k": 64,
+            "top_p": 0.95
+        },
+        "license": "Gemma Terms of Use Last modified: February 21, 2024"
+    },
+    "deepseek-coder:latest": {
+        "model_id": "3ddd2d3fc8d2",
+        "size": "776",
+        "cost_per_1k_tokens": 0.0,
+        "architecture": "llama",
+        "parameters": "1B",
+        "parameters_count": 1000000000.0,
+        "context_length": 16384,
+        "embedding_length": "2048",
+        "quantization": "Q4_0",
+        "capabilities": [
+            "completion"
+        ],
+        "stop_tokens": [],
+        "system_prompt": "You are an AI programming assistant, utilizing the Deepseek Coder model, developed by Deepseek Company, and you only answer questions related to computer science. For politically sensitive questions, security and privacy issues, and other non-computer science questions, you will refuse to answer.",
+        "model_parameters": {},
+        "license": "DEEPSEEK LICENSE AGREEMENT Version 1.0, 23 October 2023"
+    },
+    "qwen2.5-coder:0.5b": {
+        "model_id": "4ff64a7f502a",
+        "size": "397",
+        "cost_per_1k_tokens": 0.0,
+        "architecture": "qwen2",
+        "parameters": "494.03M",
+        "parameters_count": 494030000.0,
+        "context_length": 32768,
+        "embedding_length": "896",
+        "quantization": "Q4_K_M",
+        "capabilities": [
+            "completion",
+            "tools",
+            "insert"
+        ],
+        "stop_tokens": [],
+        "system_prompt": "You are Qwen, created by Alibaba Cloud. You are a helpful assistant.",
+        "model_parameters": {},
+        "license": "Apache License Version 2.0, January 2004"
+    },
+    "qwen:0.5b": {
+        "model_id": "b5dc5e784f2a",
+        "size": "394",
+        "cost_per_1k_tokens": 0.0,
+        "architecture": "qwen2",
+        "parameters": "620M",
+        "parameters_count": 620000000.0,
+        "context_length": 32768,
+        "embedding_length": "1024",
+        "quantization": "Q4_0",
+        "capabilities": [
+            "completion"
+        ],
+        "stop_tokens": [
+            "<|im_start|>",
+            "<|im_end|>"
+        ],
+        "system_prompt": null,
+        "model_parameters": {},
+        "license": "Tongyi Qianwen RESEARCH LICENSE AGREEMENT Tongyi Qianwen Release Date: November 30, 2023"
+    },
+    "qwen2.5:0.5b": {
+        "model_id": "a8b0c5157701",
+        "size": "397",
+        "cost_per_1k_tokens": 0.0,
+        "architecture": "qwen2",
+        "parameters": "494.03M",
+        "parameters_count": 494030000.0,
+        "context_length": 32768,
+        "embedding_length": "896",
+        "quantization": "Q4_K_M",
+        "capabilities": [
+            "completion",
+            "tools"
+        ],
+        "stop_tokens": [],
+        "system_prompt": "You are Qwen, created by Alibaba Cloud. You are a helpful assistant.",
+        "model_parameters": {},
+        "license": "Apache License Version 2.0, January 2004"
+    },
+    "qwen2:0.5b": {
+        "model_id": "6f48b936a09f",
+        "size": "352",
+        "cost_per_1k_tokens": 0.0,
+        "architecture": "qwen2",
+        "parameters": "494.03M",
+        "parameters_count": 494030000.0,
+        "context_length": 32768,
+        "embedding_length": "896",
+        "quantization": "Q4_0",
+        "capabilities": [
+            "completion"
+        ],
+        "stop_tokens": [
+            "<|im_start|>",
+            "<|im_end|>"
+        ],
+        "system_prompt": null,
+        "model_parameters": {},
+        "license": "Apache License Version 2.0, January 2004"
+    },
+    "smollm2:360m": {
+        "model_id": "297281b699fc",
+        "size": "725",
+        "cost_per_1k_tokens": 0.0,
+        "architecture": "llama",
+        "parameters": "361.82M",
+        "parameters_count": 361820000.0,
+        "context_length": 8192,
+        "embedding_length": "960",
+        "quantization": "F16",
+        "capabilities": [
+            "completion"
+        ],
+        "stop_tokens": [
+            "<|im_start|>",
+            "<|im_end|>"
+        ],
+        "system_prompt": "You are a helpful AI assistant named SmolLM, trained by Hugging Face",
+        "model_parameters": {},
+        "license": "Apache License Version 2.0, January 2004"
+    },
+    "smollm:360m": {
+        "model_id": "b3ba1ccba2b8",
+        "size": "229",
+        "cost_per_1k_tokens": 0.0,
+        "architecture": "llama",
+        "parameters": "361.82M",
+        "parameters_count": 361820000.0,
+        "context_length": 2048,
+        "embedding_length": "960",
+        "quantization": "Q4_0",
+        "capabilities": [
+            "completion"
+        ],
+        "stop_tokens": [
+            "<|im_start|>",
+            "<|im_end|>"
+        ],
+        "system_prompt": null,
+        "model_parameters": {
+            "temperature": 0.2,
+            "top_p": 0.9
+        },
+        "license": "Apache License Version 2.0, January 2004"
+    },
+    "smollm2:135m": {
+        "model_id": "9077fe9d2ae1",
+        "size": "270",
+        "cost_per_1k_tokens": 0.0,
+        "architecture": "llama",
+        "parameters": "134.52M",
+        "parameters_count": 134520000.0,
+        "context_length": 8192,
+        "embedding_length": "576",
+        "quantization": "F16",
+        "capabilities": [
+            "completion"
+        ],
+        "stop_tokens": [
+            "<|im_start|>",
+            "<|im_end|>"
+        ],
+        "system_prompt": "You are a helpful AI assistant named SmolLM, trained by Hugging Face",
+        "model_parameters": {},
+        "license": "Apache License Version 2.0, January 2004"
+    },
+    "smollm:135m": {
+        "model_id": "b0b2a4617438",
+        "size": "91",
+        "cost_per_1k_tokens": 0.0,
+        "architecture": "llama",
+        "parameters": "134.52M",
+        "parameters_count": 134520000.0,
+        "context_length": 2048,
+        "embedding_length": "576",
+        "quantization": "Q4_0",
+        "capabilities": [
+            "completion"
+        ],
+        "stop_tokens": [
+            "<|im_start|>",
+            "<|im_end|>"
+        ],
+        "system_prompt": null,
+        "model_parameters": {
+            "temperature": 0.2,
+            "top_p": 0.9
+        },
+        "license": "Apache License Version 2.0, January 2004"
+    }
+}

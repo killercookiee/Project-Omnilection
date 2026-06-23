@@ -5,11 +5,14 @@ Genetic_algorithm_processes/S3_mutation/prompt_chain_mutation.py
 import random
 import hashlib
 from typing import Any
+from unittest import runner
 from Genetic_algorithm_processes.Data.general_datamanager import GeneralDataManager
+from Genetic_algorithm_processes.S3_mutation.methods.delete_mutation import DeleteMutation
+from Genetic_algorithm_processes.S3_mutation.methods.semantic_llm_mutation import SemanticLLMMutation
+from Genetic_algorithm_processes.S3_mutation.methods.synonym_mutation import SynonymMutation
 
 def get_chain_id(chain: list) -> str:
     return f"chain_{hashlib.md5(str(chain).encode('utf-8')).hexdigest()[:12]}"
-
 class PromptChainMutation:
     def __init__(self,
         base_mutation_chance: float = 0.10,
@@ -29,7 +32,14 @@ class PromptChainMutation:
         self.target_explorer_min = target_explorer_ratio[0]
         self.target_explorer_max = target_explorer_ratio[1]
 
-        self.mutation_methods = mutation_methods or []
+        self.mutation_methods = mutation_methods or [
+            SemanticLLMMutation(runner=runner, mutator_model="qwen2.5-coder:0.5b", verbose=False).mutate,
+            DeleteMutation(min_segment_fraction=0.1, max_segment_fraction=0.3).mutate,
+            SynonymMutation(
+            mutation_rate=0.5,
+            pos_tags_to_mutate=['VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ', 'JJ', 'JJR', 'JJS']
+            ).mutate
+        ]
         self.gdm = gdm
         self.verbose = verbose
 

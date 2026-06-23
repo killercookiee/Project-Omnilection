@@ -6,7 +6,7 @@ class LineageReplacement:
     def __init__(self,
         population_cap: int = 10,
         exploration_ratio: float = 0.3,
-        maturity_threshold: int = 3,
+        maturity_threshold: int = 6,
         verbose: bool = False
     ):
         self.population_cap = population_cap

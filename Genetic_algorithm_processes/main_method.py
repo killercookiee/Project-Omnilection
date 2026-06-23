@@ -28,6 +28,7 @@ def _set_directory():
 _set_directory()
 
 # ── Data management & Pipeline Imports ─────────────────────────────────────────
+from Data.training_dataset import TrainingDatasetManager
 from Data.general_datamanager import GeneralDataManager
 from Dataset_Prompts.gene_pool_manager import GenePoolManager
 from Dataset_Prompts.initial_population_generator import InitialPopulationGenerator
@@ -44,6 +45,7 @@ from Genetic_algorithm_processes.S2_recombination.prompt_chain_recombination imp
 from Genetic_algorithm_processes.S3_mutation.methods.delete_mutation import DeleteMutation
 from Genetic_algorithm_processes.S3_mutation.methods.semantic_llm_mutation import SemanticLLMMutation
 from Genetic_algorithm_processes.S3_mutation.methods.gene_pool_mutation import GenePoolSearchMutation
+from Genetic_algorithm_processes.S3_mutation.methods.synonym_mutation import SynonymMutation
 from Genetic_algorithm_processes.S3_mutation.prompt_chain_mutation import PromptChainMutation
 
 from Genetic_algorithm_processes.S4_migration.prompt_chain_migration import PromptChainMigration
@@ -92,57 +94,15 @@ TARGET_SAVE_DIR  = "test_run_2026_06_18_045952"
 
 population_cap  = 100 if not QUICK_TEST_MODE else 6
 
-# ── Logical Reasoning Training Dataset ─────────────────────────────────────────
-TRAINING_DATASET = [
-    # Algebra / Composition
-    {"input": "If f(x) = 3x^2 - 2x + 1, what is the value of f(f(2))? Provide only the number.", "output": "226"},
-    
-    # Spatial Reasoning
-    {"input": "A solid 3x3x3 wooden cube is painted red on all its outside faces. It is then cut into 27 smaller 1x1x1 cubes. How many of these smaller cubes have exactly two red faces? Provide only the number.", "output": "12"},
-    
-    # Combinatorics
-    {"input": "How many unique 4-letter permutations can be made from the letters in the word 'BOOK'? Provide only the number.", "output": "12"},
-    
-    # Multi-variable Word Problem
-    {"input": "Alice is twice as old as Bob. In 5 years, the sum of their ages will be 46. How old is Bob right now? Provide only the number.", "output": "12"},
-    
-    # Algorithmic Logic / Cryptography
-    {"input": "In a Caesar cipher shifted forward by 3 letters (where A becomes D), how do you write the word 'SYSTEM'? Provide only the 6-letter capitalized word.", "output": "VBVWHP"},
-    
-    # Data Structures
-    {"input": "A binary tree has a root node with value 10. Its left child is 5 and its right child is 15. The left child of 5 is 2. The right child of 15 is 20. What is the sum of all leaf nodes in this tree? Provide only the number.", "output": "22"},
-    
-    # Physics / Kinematics
-    {"input": "A train travels at 60 mph for 2 hours, then speeds up to 90 mph for 1.5 hours. What is its average speed for the entire journey in mph? Provide only the number, rounded to the nearest whole number.", "output": "73"},
-    
-    # Boolean Logic
-    {"input": "Evaluate the following boolean logic statement, assuming A=True, B=False, C=True: (A AND NOT B) OR (B AND C). Provide only True or False.", "output": "True"},
-    
-    # Multi-constraint Reasoning
-    {
-        "input": "Write a Python function to calculate the Fibonacci sequence. Requirements: 1) Must use recursion. 2) Must include docstrings. 3) Output ONLY the raw Python code, no markdown code blocks or explanations.",
-        "output": "A valid recursive Python function calculating Fibonacci, containing a docstring, with zero markdown backticks and zero conversational text."
-    },
-    {
-        "input": "A farmer has a rectangular field that is 100 meters long and 50 meters wide. He wants to plant trees every 10 meters along the perimeter. How many trees does he need? Requirements: 1) Think step-by-step. 2) The final sentence must be exactly: 'The total number of trees is X.'",
-        "output": "The AI should calculate the perimeter (300m), divide by 10 (30 trees), provide step-by-step reasoning, and end with the exact specified string 'The total number of trees is 30.'"
-    },
-    {
-        "input": "Summarize the plot of the movie 'The Matrix' in exactly three sentences. Requirements: 1) You must write from the perspective of Agent Smith. 2) You must use the word 'inevitable'.",
-        "output": "A three-sentence summary of The Matrix. Written with a hostile, robotic tone (Agent Smith persona). The word 'inevitable' is present."
-    },
-    {
-        "input": "Convert the following JSON object into an XML string: {\"user\": {\"id\": 42, \"name\": \"Alice\", \"roles\": [\"admin\", \"editor\"]}}. Requirements: 1) The roles must be nested as individual <role> tags inside a <roles> parent block. 2) Output nothing but the XML.",
-        "output": "Properly nested XML representing the JSON data. <roles><role>admin</role><role>editor</role></roles>. No pleasantries or markdown blocks."
-    },
-    {
-        "input": "Solve this logic puzzle: There are 3 boxes. Box A says 'Gold is here'. Box B says 'Gold is not here'. Box C says 'Gold is not in Box A'. Only one box is telling the truth. Which box has the gold? Requirements: 1) Briefly explain the logical deduction. 2) Conclude with a JSON object: {\"gold_location\": \"Box X\"}",
-        "output": "Logical deduction showing that if A is true, C is false, but if B is false gold is in B... wait, the logic leads to Gold being in Box B. The output must end with {\"gold_location\": \"Box B\"}."
-    }
-]
-
-
 gdm = GeneralDataManager(run_dir=TARGET_SAVE_DIR, resume_from_save=RESUME_FROM_SAVE)
+
+
+# ── Define Training Environment ────────────────────────────────────────────────
+dataset_manager = TrainingDatasetManager(verbose=True)
+
+# Load 10 Math problems and 10 Coding problems from the industry benchmarks
+TRAINING_DATASET = dataset_manager.load_industry_benchmarks(num_math=10, num_coding=10)
+
 
 # ── Logging Setup (Clean UI) ───────────────────────────────────────────────────
 log_file_path = os.path.join(gdm.run_dir, "pipeline.log")
@@ -281,7 +241,11 @@ mutation_algorithm = PromptChainMutation(
     mutation_methods=[
         SemanticLLMMutation(runner=runner, mutator_model="qwen2.5-coder:0.5b", verbose=False).mutate,
         DeleteMutation(min_segment_fraction=0.1, max_segment_fraction=0.3).mutate,
-        GenePoolSearchMutation(segments=segments, verbose=False).mutate 
+        GenePoolSearchMutation(segments=segments, verbose=False).mutate,
+        SynonymMutation(
+        mutation_rate=0.5,
+        pos_tags_to_mutate=['VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ', 'JJ', 'JJR', 'JJS']
+        ).mutate
     ]
 )
 
